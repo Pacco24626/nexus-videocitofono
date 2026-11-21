@@ -97,8 +97,28 @@ class NotifyManager:
         if new.state == "on" and (old is None or old.state != "on"):
             await self._send()
 
+    def _ent(self, key: str):
+        """Entita' di un'azione dalle opzioni; vuota/assente -> None (nessuna azione)."""
+        return self.entry.options.get(key) or None
+
     def _notify_data(self) -> dict:
         dash = self._opt(CONF_DASHBOARD_PATH, DEFAULT_DASHBOARD)
+        answer = self._ent(CONF_ANSWER_BUTTON)
+        door = self._ent(CONF_DOOR_BUTTON)
+        hangup = self._ent(CONF_HANGUP_BUTTON)
+        # Mostra SOLO le azioni che esistono davvero (brand-agnostico).
+        actions = []
+        # Rispondi: se c'e' un "rispondi" backend (SIP, es. Vimar) lo preme; altrimenti,
+        # se c'e' una plancia (citofono-telecamera, es. Dahua), apre il video dal vivo
+        # (dove si abilita l'audio bidirezionale). Se non c'e' ne' l'uno ne' l'altra, niente.
+        if answer:
+            actions.append({"action": ACTION_ANSWER, "title": "Rispondi"})
+        elif dash:
+            actions.append({"action": "URI", "title": "Rispondi", "uri": dash})
+        if door:
+            actions.append({"action": ACTION_DOOR, "title": "Apriporta"})
+        if hangup:
+            actions.append({"action": ACTION_HANGUP, "title": "Riaggancia"})
         data: dict = {
             "tag": NOTIFY_TAG,
             "channel": "Videocitofono",
@@ -107,11 +127,7 @@ class NotifyManager:
             "ttl": 0,
             "sticky": True,
             "notification_icon": "mdi:doorbell-video",
-            "actions": [
-                {"action": ACTION_ANSWER, "title": "Rispondi"},
-                {"action": ACTION_DOOR, "title": "Apriporta"},
-                {"action": ACTION_HANGUP, "title": "Riaggancia"},
-            ],
+            "actions": actions,
             "push": {"interruption-level": "time-sensitive"},
         }
         if dash:
@@ -166,9 +182,9 @@ class NotifyManager:
     async def _on_action(self, event: Event) -> None:
         action = event.data.get("action")
         mapping = {
-            ACTION_ANSWER: self._opt(CONF_ANSWER_BUTTON, DEFAULT_ANSWER_BUTTON),
-            ACTION_DOOR: self._opt(CONF_DOOR_BUTTON, DEFAULT_DOOR_BUTTON),
-            ACTION_HANGUP: self._opt(CONF_HANGUP_BUTTON, DEFAULT_HANGUP_BUTTON),
+            ACTION_ANSWER: self._ent(CONF_ANSWER_BUTTON),
+            ACTION_DOOR: self._ent(CONF_DOOR_BUTTON),
+            ACTION_HANGUP: self._ent(CONF_HANGUP_BUTTON),
         }
         if action not in mapping:
             return

@@ -89,13 +89,16 @@ class NexusVideocitofonoOptionsFlow(OptionsFlow):
             if s.startswith("mobile_app_")
         )
 
+        # NB: i campi opzionali usano "suggested_value" (non "default"), cosi' si possono
+        # LASCIARE VUOTI: un campo svuotato resta assente e l'azione non viene mostrata.
         schema = vol.Schema(
             {
                 vol.Required(
                     CONF_ENABLE_NOTIFY, default=cur.get(CONF_ENABLE_NOTIFY, True)
                 ): selector.BooleanSelector(),
                 vol.Optional(
-                    CONF_NOTIFY_TARGETS, default=cur.get(CONF_NOTIFY_TARGETS, [])
+                    CONF_NOTIFY_TARGETS,
+                    description={"suggested_value": cur.get(CONF_NOTIFY_TARGETS, [])},
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=notify_services,
@@ -111,30 +114,37 @@ class NexusVideocitofonoOptionsFlow(OptionsFlow):
                 ),
                 vol.Optional(
                     CONF_ANSWER_BUTTON,
-                    default=cur.get(CONF_ANSWER_BUTTON, DEFAULT_ANSWER_BUTTON),
+                    description={"suggested_value": cur.get(CONF_ANSWER_BUTTON)},
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=ACTION_DOMAINS)
                 ),
                 vol.Optional(
-                    CONF_DOOR_BUTTON, default=cur.get(CONF_DOOR_BUTTON, DEFAULT_DOOR_BUTTON)
+                    CONF_DOOR_BUTTON,
+                    description={
+                        "suggested_value": cur.get(CONF_DOOR_BUTTON, DEFAULT_DOOR_BUTTON)
+                    },
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=ACTION_DOMAINS)
                 ),
                 vol.Optional(
                     CONF_HANGUP_BUTTON,
-                    default=cur.get(CONF_HANGUP_BUTTON, DEFAULT_HANGUP_BUTTON),
+                    description={"suggested_value": cur.get(CONF_HANGUP_BUTTON)},
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=ACTION_DOMAINS)
                 ),
                 vol.Optional(
                     CONF_DASHBOARD_PATH,
-                    default=cur.get(CONF_DASHBOARD_PATH, DEFAULT_DASHBOARD),
+                    description={
+                        "suggested_value": cur.get(CONF_DASHBOARD_PATH, DEFAULT_DASHBOARD)
+                    },
                 ): selector.TextSelector(),
                 vol.Optional(
-                    CONF_TITLE, default=cur.get(CONF_TITLE, DEFAULT_TITLE)
+                    CONF_TITLE,
+                    description={"suggested_value": cur.get(CONF_TITLE, DEFAULT_TITLE)},
                 ): selector.TextSelector(),
                 vol.Optional(
-                    CONF_MESSAGE, default=cur.get(CONF_MESSAGE, DEFAULT_MESSAGE)
+                    CONF_MESSAGE,
+                    description={"suggested_value": cur.get(CONF_MESSAGE, DEFAULT_MESSAGE)},
                 ): selector.TextSelector(),
             }
         )
