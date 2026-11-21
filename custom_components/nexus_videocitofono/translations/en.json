@@ -23,6 +23,7 @@
           "answer_button": "Answer control (optional)",
           "door_button": "Open-door control",
           "hangup_button": "Hang-up control (optional)",
+          "camera": "Camera (optional)",
           "dashboard_path": "Dashboard to open on tap",
           "title": "Notification title",
           "message": "Notification text"
@@ -31,6 +32,7 @@
           "notify_targets": "Requires the Home Assistant app on the phone. If it is not listed, type the service name (e.g. mobile_app_johns_iphone).",
           "answer_button": "Leave empty if your intercom has no two-way answer.",
           "hangup_button": "Leave empty if your intercom has no hang-up.",
+          "camera": "The intercom camera: the video in the notification and the automatic panel.",
           "dashboard_path": "Path of the intercom dashboard. Empty = open nothing on tap."
         }
       }

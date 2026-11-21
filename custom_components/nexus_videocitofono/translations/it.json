@@ -23,6 +23,7 @@
           "answer_button": "Pulsante Rispondi (opzionale)",
           "door_button": "Pulsante Apriporta",
           "hangup_button": "Pulsante Riaggancia (opzionale)",
+          "camera": "Telecamera (opzionale)",
           "dashboard_path": "Plancia da aprire al tocco",
           "title": "Titolo della notifica",
           "message": "Testo della notifica"
@@ -31,6 +32,7 @@
           "notify_targets": "Serve l'app Home Assistant sul telefono. Se non e' in elenco, digita il nome del servizio (es. mobile_app_iphone_di_mario).",
           "answer_button": "Lascia vuoto se il tuo citofono non ha il «rispondi» a due vie.",
           "hangup_button": "Lascia vuoto se il tuo citofono non ha il «riaggancia».",
+          "camera": "La telecamera del citofono: il video nella notifica e nella plancia automatica.",
           "dashboard_path": "Percorso della plancia videocitofono. Vuoto = non apre nulla al tocco."
         }
       }

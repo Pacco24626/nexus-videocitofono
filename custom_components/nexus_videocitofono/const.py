@@ -7,6 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
+VERSION = "0.2.0"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_ENABLE_NOTIFY = "enable_notify"
@@ -15,6 +16,7 @@ CONF_CALL_SENSOR = "call_sensor"
 CONF_ANSWER_BUTTON = "answer_button"
 CONF_DOOR_BUTTON = "door_button"
 CONF_HANGUP_BUTTON = "hangup_button"
+CONF_CAMERA = "camera"
 CONF_DASHBOARD_PATH = "dashboard_path"
 CONF_TITLE = "title"
 CONF_MESSAGE = "message"
@@ -34,3 +36,7 @@ ACTION_ANSWER = "VIMAR_VDC_ANSWER"
 ACTION_DOOR = "VIMAR_VDC_DOOR"
 ACTION_HANGUP = "VIMAR_VDC_HANGUP"
 NOTIFY_TAG = "vimar_vdc_call"
+
+# --- guardiano (plancia automatica sui dispositivi scelti) ---
+GUARDIAN_URL = "/nexus_videocitofono/guardian.js"
+WS_CONFIG = "nexus_videocitofono/config"

@@ -35,6 +35,7 @@ ACTION_DOMAINS = [
 from .const import (
     CONF_ANSWER_BUTTON,
     CONF_CALL_SENSOR,
+    CONF_CAMERA,
     CONF_DASHBOARD_PATH,
     CONF_DOOR_BUTTON,
     CONF_ENABLE_NOTIFY,
@@ -131,6 +132,12 @@ class NexusVideocitofonoOptionsFlow(OptionsFlow):
                     description={"suggested_value": cur.get(CONF_HANGUP_BUTTON)},
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=ACTION_DOMAINS)
+                ),
+                vol.Optional(
+                    CONF_CAMERA,
+                    description={"suggested_value": cur.get(CONF_CAMERA)},
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="camera")
                 ),
                 vol.Optional(
                     CONF_DASHBOARD_PATH,
