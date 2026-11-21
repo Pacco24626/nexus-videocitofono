@@ -1,0 +1,39 @@
+{
+  "title": "Nexus Videocitofono",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nexus Videocitofono",
+        "description": "Aggiunge notifiche e comodita' al tuo videocitofono IP (qualsiasi marca che esponga a Home Assistant chiamata, pulsanti e video). Dopo l'aggiunta premi CONFIGURA per impostare tutto."
+      }
+    },
+    "abort": {
+      "already_configured": "Nexus Videocitofono e' gia' configurato."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Notifiche sul telefono",
+        "description": "Quando il videocitofono squilla, avvisa i telefoni scelti con una notifica azionabile (Rispondi / Apriporta / Riaggancia). I valori preimpostati sono per il bridge Vimar By-me: cambiali se usi un altro citofono.",
+        "data": {
+          "enable_notify": "Attiva le notifiche",
+          "notify_targets": "Telefoni da avvisare",
+          "call_sensor": "Sensore «chiamata in arrivo»",
+          "answer_button": "Pulsante Rispondi (opzionale)",
+          "door_button": "Pulsante Apriporta",
+          "hangup_button": "Pulsante Riaggancia (opzionale)",
+          "dashboard_path": "Plancia da aprire al tocco",
+          "title": "Titolo della notifica",
+          "message": "Testo della notifica"
+        },
+        "data_description": {
+          "notify_targets": "Serve l'app Home Assistant sul telefono. Se non e' in elenco, digita il nome del servizio (es. mobile_app_iphone_di_mario).",
+          "answer_button": "Lascia vuoto se il tuo citofono non ha il «rispondi» a due vie.",
+          "hangup_button": "Lascia vuoto se il tuo citofono non ha il «riaggancia».",
+          "dashboard_path": "Percorso della plancia videocitofono. Vuoto = non apre nulla al tocco."
+        }
+      }
+    }
+  }
+}
