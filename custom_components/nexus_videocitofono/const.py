@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_ENABLE_NOTIFY = "enable_notify"

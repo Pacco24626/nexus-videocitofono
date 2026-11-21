@@ -11,7 +11,9 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.util import slugify
 
 from .const import (
     ACTION_ANSWER,
@@ -188,5 +190,31 @@ class NotifyManager:
         }
         if action not in mapping:
             return
+        # Solo i telefoni SCELTI possono comandare (qui si apre la porta!). Se l'evento
+        # porta il device_id e riusciamo a risolvere i target, verifichiamo l'appartenenza;
+        # se non c'e' device_id o non risolviamo nulla, non blocchiamo (compatibilita').
+        device_id = event.data.get("device_id")
+        if device_id:
+            allowed = self._allowed_device_ids()
+            if allowed and device_id not in allowed:
+                _LOGGER.debug(
+                    "Nexus Videocitofono: azione %s da dispositivo non autorizzato, ignorata",
+                    action,
+                )
+                return
         await self._activate(mapping[action])
         await self._clear()
+
+    def _allowed_device_ids(self) -> set[str]:
+        """device_id dei telefoni scelti (per non far aprire la porta da altri device)."""
+        targets = {str(t).split(".")[-1] for t in self._opt(CONF_NOTIFY_TARGETS, [])}
+        if not targets:
+            return set()
+        reg = dr.async_get(self.hass)
+        allowed: set[str] = set()
+        for dev in reg.devices.values():
+            if any(iden[0] == "mobile_app" for iden in dev.identifiers):
+                name = dev.name_by_user or dev.name or ""
+                if ("mobile_app_" + slugify(name)) in targets:
+                    allowed.add(dev.id)
+        return allowed

@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.2.0";
+  var VERSION = "0.2.1";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;
@@ -100,7 +100,7 @@
     ".cmd .cer ha-icon{--mdc-icon-size:28px;color:#fff}" +
     ".cmd:active{transform:scale(.96)}";
 
-  var cfg = null, host = null, sr = null;
+  var cfg = null, host = null, sr = null, dismissed = false;
 
   function ensureCfg(hass) {
     if (cfg) return;
@@ -157,10 +157,10 @@
     document.body.appendChild(host);
     var $ = function (id) { return sr.getElementById(id); };
     $("bd").addEventListener("click", function (e) { if (e.target === $("bd")) close(); });
-    if ($("close")) $("close").onclick = close;
+    if ($("close")) $("close").onclick = userDismiss;
     if (c.answer && $("answer")) $("answer").onclick = function () { activate(hass, c.answer); };
     if (c.door && $("door")) $("door").onclick = function () { activate(hass, c.door); };
-    if (c.hangup && $("hangup")) $("hangup").onclick = function () { activate(hass, c.hangup); close(); };
+    if (c.hangup && $("hangup")) $("hangup").onclick = function () { activate(hass, c.hangup); userDismiss(); };
     if (c.camera && $("video")) $("video").onclick = function () {
       host.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: c.camera }, bubbles: true, composed: true }));
     };
@@ -175,16 +175,17 @@
   }
 
   function close() { if (host) { host.remove(); host = null; sr = null; } }
+  function userDismiss() { dismissed = true; close(); } // chiusura utente: non riaprire finche' squilla
 
   function tick() {
     var hass = getHass();
     if (!hass) return;
     if (!cfg) { ensureCfg(hass); return; }
-    if (!lsGet()) { if (host) close(); return; } // non abilitato su questo dispositivo
+    if (!lsGet()) { if (host) close(); dismissed = false; return; } // non abilitato qui
     var on = callIsOn(hass);
-    if (on && !host) show(hass);
-    else if (!on && host) close();
-    else if (on && host) refreshVideo(hass);
+    if (!on) { dismissed = false; if (host) close(); return; } // fine chiamata: reset + chiudi
+    if (host) { refreshVideo(hass); return; }
+    if (!dismissed) show(hass); // non riaprire se l'utente ha chiuso QUESTA chiamata
   }
 
   setInterval(tick, 1000);
