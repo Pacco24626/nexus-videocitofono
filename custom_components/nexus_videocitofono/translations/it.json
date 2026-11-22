@@ -20,6 +20,29 @@
           "brand": "Marca del videocitofono"
         }
       },
+      "dahua_mode": {
+        "title": "Dahua: risposta avanzata (facoltativa)",
+        "description": "Con l'add-on Nexus il tuo Dahua ha in piu': «Rispondi» vero (il monitor interno smette di squillare), audio a due vie immediato, stato «in conversazione» e riaggancio che chiude la chiamata alla targa. Senza, resta il Dahua base (video, apriporta, notifica). Attivalo solo se hai installato l'add-on.",
+        "data": {
+          "use_addon": "Usa l'add-on per la risposta SIP e l'audio immediato"
+        }
+      },
+      "dahua_vto": {
+        "title": "Credenziali del VTO Dahua",
+        "description": "Servono per configurare l'add-on: l'indirizzo IP del videocitofono (VTO) e l'utente/password admin della sua pagina web. Vengono usati solo per ricavare il modello e gli interni; la password degli interni non viene mai letta.",
+        "data": {
+          "vto_ip": "Indirizzo IP del VTO",
+          "admin_user": "Utente admin",
+          "admin_password": "Password admin"
+        }
+      },
+      "dahua_ext": {
+        "title": "Interno SIP per l'add-on",
+        "description": "VTO {model} — {count} interni trovati. Scegli un interno LIBERO per l'add-on: NON usare l'interno di un monitor (VTH) gia' esistente, altrimenti gli rubi la registrazione. Di solito l'ultimo della lista e' libero (gia' preselezionato), ma puoi cambiarlo.",
+        "data": {
+          "extension": "Interno (es. 9901#9)"
+        }
+      },
       "config": {
         "title": "Notifiche e plancia",
         "description": "Quando il videocitofono squilla, avvisa i telefoni scelti con una notifica azionabile (Rispondi / Apriporta / Riaggancia) e, sui dispositivi abilitati, apre la plancia. I campi sono precompilati in base alla marca scelta: cambiali se serve.",
@@ -45,6 +68,9 @@
           "dashboard_path": "Percorso della plancia videocitofono. Vuoto = non apre nulla al tocco."
         }
       }
+    },
+    "error": {
+      "vto_auth": "Non riesco a raggiungere il VTO o le credenziali admin non sono corrette. Controlla IP, utente e password."
     }
   }
 }

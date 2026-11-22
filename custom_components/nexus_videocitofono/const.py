@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.2.4"
+VERSION = "0.2.5"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura
@@ -59,6 +59,14 @@ BRAND_DEFAULTS = {
     },
     BRAND_GENERIC: {},
 }
+
+# --- ponte add-on (Fase 2): opzioni raccolte dall'integrazione e passate all'add-on.
+# I nomi combaciano con le options del config.yaml dell'add-on (profilo dahua). ---
+CONF_USE_ADDON = "use_addon"  # Dahua: add-on facoltativo (risposta SIP / audio immediato)
+CONF_VTO_IP = "vto_ip"
+CONF_ADMIN_USER = "admin_user"
+CONF_ADMIN_PASSWORD = "admin_password"
+CONF_EXTENSION = "extension"
 
 # --- notifiche azionabili (app Companion) ---
 EVENT_ACTION = "mobile_app_notification_action"

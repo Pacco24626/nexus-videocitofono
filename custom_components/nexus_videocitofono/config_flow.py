@@ -37,6 +37,8 @@ from .const import (
     BRAND_DEFAULTS,
     BRAND_GENERIC,
     BRAND_VIMAR,
+    CONF_ADMIN_PASSWORD,
+    CONF_ADMIN_USER,
     CONF_ANSWER_BUTTON,
     CONF_BRAND,
     CONF_CALL_SENSOR,
@@ -44,11 +46,14 @@ from .const import (
     CONF_DASHBOARD_PATH,
     CONF_DOOR_BUTTON,
     CONF_ENABLE_NOTIFY,
+    CONF_EXTENSION,
     CONF_HANGUP_BUTTON,
     CONF_MESSAGE,
     CONF_NOTIFY_TARGETS,
     CONF_RING_HOLD_SEC,
     CONF_TITLE,
+    CONF_USE_ADDON,
+    CONF_VTO_IP,
     DEFAULT_BRAND,
     DEFAULT_MESSAGE,
     DEFAULT_RING_HOLD_SEC,
@@ -86,11 +91,17 @@ class NexusVideocitofonoOptionsFlow(OptionsFlow):
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._entry = config_entry
         self._brand = dict(config_entry.options).get(CONF_BRAND, DEFAULT_BRAND)
+        self._dahua: dict[str, Any] = {}  # parametri ponte Dahua (use_addon, vto_ip, ...)
+        self._extensions: list[dict[str, str]] = []
+        self._device: dict[str, str] = {}
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Passo 1: scelta della marca."""
         if user_input is not None:
             self._brand = user_input[CONF_BRAND]
+            self._dahua = {}
+            if self._brand == BRAND_DAHUA:
+                return await self.async_step_dahua_mode()
             return await self.async_step_config()
 
         schema = vol.Schema(
@@ -109,11 +120,109 @@ class NexusVideocitofonoOptionsFlow(OptionsFlow):
         )
         return self.async_show_form(step_id="init", data_schema=schema)
 
+    # ---------- Dahua: add-on FACOLTATIVO (risposta SIP / audio immediato) ----------
+    async def async_step_dahua_mode(self, user_input: dict[str, Any] | None = None):
+        """Interruttore: usare l'add-on? Spento = Dahua base (come oggi), nessun VTO."""
+        cur = dict(self._entry.options)
+        if user_input is not None:
+            use = bool(user_input.get(CONF_USE_ADDON, False))
+            self._dahua[CONF_USE_ADDON] = use
+            if use:
+                return await self.async_step_dahua_vto()
+            return await self.async_step_config()
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_USE_ADDON, default=cur.get(CONF_USE_ADDON, False)
+                ): selector.BooleanSelector(),
+            }
+        )
+        return self.async_show_form(step_id="dahua_mode", data_schema=schema)
+
+    async def async_step_dahua_vto(self, user_input: dict[str, Any] | None = None):
+        """Credenziali admin del VTO: valida e legge modello + interni via CGI."""
+        from .dahua_vto import async_probe_vto
+
+        cur = dict(self._entry.options)
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            res = await async_probe_vto(
+                self.hass,
+                user_input[CONF_VTO_IP],
+                user_input[CONF_ADMIN_USER],
+                user_input[CONF_ADMIN_PASSWORD],
+            )
+            if not res.get("ok"):
+                errors["base"] = "vto_auth"
+            else:
+                self._dahua[CONF_VTO_IP] = user_input[CONF_VTO_IP]
+                self._dahua[CONF_ADMIN_USER] = user_input[CONF_ADMIN_USER]
+                self._dahua[CONF_ADMIN_PASSWORD] = user_input[CONF_ADMIN_PASSWORD]
+                self._device = res.get("device", {})
+                self._extensions = res.get("extensions", [])
+                return await self.async_step_dahua_ext()
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_VTO_IP, default=cur.get(CONF_VTO_IP, "")
+                ): selector.TextSelector(),
+                vol.Required(
+                    CONF_ADMIN_USER, default=cur.get(CONF_ADMIN_USER, "admin")
+                ): selector.TextSelector(),
+                vol.Required(CONF_ADMIN_PASSWORD): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="dahua_vto", data_schema=schema, errors=errors
+        )
+
+    async def async_step_dahua_ext(self, user_input: dict[str, Any] | None = None):
+        """Scelta dell'interno SIP del VTO (ultimo preselezionato, modificabile)."""
+        if user_input is not None:
+            self._dahua[CONF_EXTENSION] = user_input[CONF_EXTENSION]
+            return await self.async_step_config()
+
+        # solo i VTH (i monitor); se la lista e' vuota, lasciamo tutti quelli trovati.
+        vth = [e["id"] for e in self._extensions if (e.get("type") or "").upper() == "VTH"]
+        ids = vth or [e["id"] for e in self._extensions]
+        options = [{"value": i, "label": i} for i in ids]
+        default_ext = ids[-1] if ids else None  # ultimo della lista preselezionato
+
+        ext_key = (
+            vol.Required(CONF_EXTENSION, default=default_ext)
+            if default_ext
+            else vol.Required(CONF_EXTENSION)
+        )
+        schema = vol.Schema(
+            {
+                ext_key: selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        custom_value=True,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="dahua_ext",
+            data_schema=schema,
+            description_placeholders={
+                "model": self._device.get("model", "VTO"),
+                "count": str(len(ids)),
+            },
+        )
+
     async def async_step_config(self, user_input: dict[str, Any] | None = None):
         """Passo 2: i campi, precompilati in base alla marca."""
         if user_input is not None:
             return self.async_create_entry(
-                title="", data={CONF_BRAND: self._brand, **user_input}
+                title="",
+                data={CONF_BRAND: self._brand, **self._dahua, **user_input},
             )
 
         cur = dict(self._entry.options)

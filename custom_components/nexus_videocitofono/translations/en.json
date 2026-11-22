@@ -20,6 +20,29 @@
           "brand": "Intercom brand"
         }
       },
+      "dahua_mode": {
+        "title": "Dahua: advanced answer (optional)",
+        "description": "With the Nexus add-on your Dahua also gets: a real \"Answer\" (the indoor monitor stops ringing), instant two-way audio, an \"in call\" state and a hang-up that ends the call at the door station. Without it, the basic Dahua stays (video, door release, notification). Enable it only if you installed the add-on.",
+        "data": {
+          "use_addon": "Use the add-on for SIP answer and instant audio"
+        }
+      },
+      "dahua_vto": {
+        "title": "Dahua VTO credentials",
+        "description": "Needed to configure the add-on: the door station (VTO) IP and its web admin user/password. Used only to read the model and the extensions; the extension passwords are never read.",
+        "data": {
+          "vto_ip": "VTO IP address",
+          "admin_user": "Admin user",
+          "admin_password": "Admin password"
+        }
+      },
+      "dahua_ext": {
+        "title": "SIP extension for the add-on",
+        "description": "VTO {model} — {count} extensions found. Pick a FREE extension for the add-on: do NOT use an existing monitor (VTH) extension, or you steal its registration. The last one in the list is usually free (already preselected), but you can change it.",
+        "data": {
+          "extension": "Extension (e.g. 9901#9)"
+        }
+      },
       "config": {
         "title": "Notifications and panel",
         "description": "When the intercom rings, notify the chosen phones with an actionable notification (Answer / Open door / Hang up) and, on enabled devices, open the panel. Fields are pre-filled from the chosen brand: change them if needed.",
@@ -45,6 +68,9 @@
           "dashboard_path": "Path of the intercom dashboard. Empty = open nothing on tap."
         }
       }
+    },
+    "error": {
+      "vto_auth": "Cannot reach the VTO or the admin credentials are wrong. Check IP, user and password."
     }
   }
 }
