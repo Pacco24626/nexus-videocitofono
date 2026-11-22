@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.3.1";
+  var VERSION = "0.3.3";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;
@@ -47,7 +47,7 @@
   // cablano in un overlay; questo invece riproduce una qualsiasi camera entity
   // (Dahua grezza oggi, lo stream go2rtc dell'add-on domani). Restituisce {stop()}.
   function startWebRTC(hass, entityId, videoEl, onFail) {
-    var H = { stopped: false, pc: null, unsub: null, sid: null, candQ: [] };
+    var H = { stopped: false, pc: null, unsub: null, sid: null, candQ: [], micStream: null, audioSender: null };
     var pc;
     try { pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] }); }
     catch (e) { if (onFail) onFail(); return H; }
@@ -55,7 +55,11 @@
     var stream = new MediaStream();
     try { videoEl.srcObject = stream; } catch (e) {}
     pc.addTransceiver("video", { direction: "recvonly" });
-    pc.addTransceiver("audio", { direction: "recvonly" });
+    // Audio SENDRECV: riceve l'audio della targa E puo' inviare il microfono (backchannel del
+    // go2rtc dell'add-on). Senza mic agganciato invia silenzio -> la sola ricezione resta come
+    // prima. Due vie NON ancora provato (browser->go2rtc HA->add-on->VTO): validare alla targa.
+    var atx = pc.addTransceiver("audio", { direction: "sendrecv" });
+    H.audioSender = atx.sender;
     pc.ontrack = function (e) {
       try { stream.addTrack(e.track); } catch (x) {}
       if (videoEl.play) videoEl.play().catch(function () {});
@@ -91,8 +95,31 @@
         function () { if (onFail) onFail(); }
       );
     }).catch(function () { if (onFail) onFail(); });
+    // Microfono (audio a due vie): startMic() SU GESTO UTENTE (Rispondi). echoCancellation/
+    // noiseSuppression/autoGainControl. Richiede contesto sicuro (app Companion/https).
+    H.startMic = function () {
+      if (H.micStream) return Promise.resolve(true);
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(false);
+      return navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      }).then(function (ms) {
+        if (H.stopped) { try { ms.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return false; }
+        H.micStream = ms;
+        var tr = ms.getAudioTracks()[0];
+        if (tr && H.audioSender) { try { H.audioSender.replaceTrack(tr); } catch (e) {} }
+        return true;
+      }).catch(function () { return false; });
+    };
+    H.setMicMuted = function (muted) {
+      if (H.micStream) H.micStream.getAudioTracks().forEach(function (t) { t.enabled = !muted; });
+    };
+    H.stopMic = function () {
+      if (H.micStream) { try { H.micStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} H.micStream = null; }
+      if (H.audioSender) { try { H.audioSender.replaceTrack(null); } catch (e) {} }
+    };
     H.stop = function () {
       H.stopped = true;
+      H.stopMic();
       try { if (H.unsub) H.unsub(); } catch (e) {}
       try { pc.close(); } catch (e) {}
     };
@@ -153,6 +180,8 @@
     ".video video.nxon{display:block}" +
     ".parla{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.55);color:#fff;padding:4px 12px;border-radius:999px;font-size:11px}" +
     ".parla ha-icon{--mdc-icon-size:15px}" +
+    ".mic{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:6px;background:#2E9E6B;color:#fff;padding:4px 12px;border-radius:999px;font-size:11px;cursor:pointer}" +
+    ".mic.on{display:inline-flex}.mic.muted{background:#DE4A51}.mic ha-icon{--mdc-icon-size:15px}" +
     ".spk{position:absolute;top:10px;right:12px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#F2F2F2}" +
     ".spk ha-icon{--mdc-icon-size:17px}" +
     ".spk.on{background:#2E9E6B;color:#fff}" +
@@ -168,7 +197,7 @@
     ".cmd .cer ha-icon{--mdc-icon-size:28px;color:#fff}" +
     ".cmd:active{transform:scale(.96)}";
 
-  var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0, rtc = null, audioOn = false;
+  var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0, rtc = null, audioOn = false, micActive = false, micMuted = false;
   var wd = null, tries = 0, guardConnecting = false, lastPreview = true, rang = false;
 
   // Origine della chiamata attiva, dall'attributo stabile `origin` del sensore Stato
@@ -252,6 +281,26 @@
       if (ic) ic.setAttribute("icon", audioOn ? "mdi:volume-high" : "mdi:volume-off");
     }
   }
+  // Microfono dell'overlay (audio a due vie): parte ACCESO su Rispondi (gesto utente),
+  // silenziabile col suo tasto; si chiude con l'overlay. Da provare alla targa (Companion/https).
+  function startOverlayMic() {
+    if (!rtc || !rtc.startMic) return;
+    rtc.startMic().then(function (ok) { micActive = !!ok; micMuted = false; renderOverlayMic(); });
+  }
+  function setOverlayMicMuted(muted) {
+    micMuted = !!muted;
+    if (rtc && rtc.setMicMuted) rtc.setMicMuted(micMuted);
+    renderOverlayMic();
+  }
+  function renderOverlayMic() {
+    var el = sr && sr.getElementById("mic");
+    if (!el) return;
+    el.className = "mic" + (micActive ? " on" : "") + (micMuted ? " muted" : "");
+    var ic = el.querySelector("ha-icon");
+    if (ic) ic.setAttribute("icon", micMuted ? "mdi:microphone-off" : "mdi:microphone");
+    var tx = el.querySelector("#mictxt");
+    if (tx) tx.textContent = micMuted ? "microfono muto" : "microfono acceso";
+  }
   function convActive(hass) {
     if (!cfg || !cfg.status_sensor) return false;
     var s = hass.states[cfg.status_sensor];
@@ -303,7 +352,7 @@
       '<video id="live" autoplay playsinline muted></video>' +
       '<div class="conn" id="conn"><span class="dot"></span>collegamento in corso…</div>' +
       '<div class="spk" id="spk"><ha-icon icon="mdi:volume-off"></ha-icon></div>' +
-      '<div class="parla"><ha-icon icon="mdi:microphone"></ha-icon>tocca per parlare</div></div>';
+      '<div class="mic" id="mic"><ha-icon icon="mdi:microphone"></ha-icon><span id="mictxt">microfono acceso</span></div></div>';
   }
 
   function overlayHTML(hass, c) {
@@ -333,13 +382,13 @@
     sr = host.attachShadow({ mode: "open" });
     sr.innerHTML = overlayHTML(hass, c);
     document.body.appendChild(host);
-    audioOn = false; // ogni overlay nuovo parte muto
+    audioOn = false; micActive = false; micMuted = false; // ogni overlay nuovo parte muto, mic spento
     var $ = function (id) { return sr && sr.getElementById(id); };
     if ($("bd")) $("bd").addEventListener("click", function (e) { if (e.target === $("bd")) userDismiss(); });
     if ($("close")) $("close").onclick = userDismiss;
     // Rispondi = gesto utente -> smuto l'audio; bloccato se gia' "in conversazione"
     // (due dispositivi che rispondono riavviano il relay audio dell'add-on).
-    if (c.answer && $("answer")) $("answer").onclick = function () { if (convActive(hass)) return; activate(hass, c.answer); setOverlayAudio(true); };
+    if (c.answer && $("answer")) $("answer").onclick = function () { if (convActive(hass)) return; activate(hass, c.answer); setOverlayAudio(true); startOverlayMic(); };
     if (c.door && $("door")) $("door").onclick = function () { activate(hass, c.door); };
     if (c.hangup && $("hangup")) $("hangup").onclick = function () { activate(hass, c.hangup); userDismiss(); };
     if (c.camera && $("video")) $("video").onclick = function () {
@@ -348,6 +397,7 @@
     // Tasto altoparlante: smuta/muta senza rispondere; stopPropagation per non aprire
     // la vista nativa (click sul .video). Still mancante (camera intercom): lo nascondo.
     if ($("spk")) $("spk").onclick = function (e) { e.stopPropagation(); setOverlayAudio(!audioOn); };
+    if ($("mic")) $("mic").onclick = function (e) { e.stopPropagation(); setOverlayMicMuted(!micMuted); };
     var img0 = $("img");
     if (img0) img0.onerror = function () { img0.style.display = "none"; };
     // Video live via WebRTC. Rivela il video a frame arrivati; con anteprima al "playing".
@@ -377,7 +427,7 @@
     clearWatchdog();
     if (rtc) { try { rtc.stop(); } catch (e) {} rtc = null; }
     if (host) { host.remove(); host = null; sr = null; }
-    audioOn = false; guardConnecting = false; tries = 0;
+    audioOn = false; guardConnecting = false; tries = 0; micActive = false; micMuted = false;
   }
   function userDismiss() { dismissed = true; close(); } // chiusura utente: non riaprire finche' squilla
 
