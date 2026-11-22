@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.2.2";
+  var VERSION = "0.2.3";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;

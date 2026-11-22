@@ -14,8 +14,15 @@
   "options": {
     "step": {
       "init": {
-        "title": "Phone notifications",
-        "description": "When the intercom rings, notify the chosen phones with an actionable notification (Answer / Open door / Hang up). Presets are for the Vimar By-me bridge: change them if you use another intercom.",
+        "title": "Which intercom do you have?",
+        "description": "Choose the intercom brand: the next step's fields will be pre-filled accordingly. The integration works with any IP intercom that exposes call, buttons and video to Home Assistant; the brand only simplifies setup.",
+        "data": {
+          "brand": "Intercom brand"
+        }
+      },
+      "config": {
+        "title": "Notifications and panel",
+        "description": "When the intercom rings, notify the chosen phones with an actionable notification (Answer / Open door / Hang up) and, on enabled devices, open the panel. Fields are pre-filled from the chosen brand: change them if needed.",
         "data": {
           "enable_notify": "Enable notifications",
           "notify_targets": "Phones to notify",

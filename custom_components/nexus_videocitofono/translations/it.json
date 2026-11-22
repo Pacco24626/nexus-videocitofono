@@ -14,8 +14,15 @@
   "options": {
     "step": {
       "init": {
-        "title": "Notifiche sul telefono",
-        "description": "Quando il videocitofono squilla, avvisa i telefoni scelti con una notifica azionabile (Rispondi / Apriporta / Riaggancia). I valori preimpostati sono per il bridge Vimar By-me: cambiali se usi un altro citofono.",
+        "title": "Che citofono hai?",
+        "description": "Scegli la marca del videocitofono: i campi del passo successivo verranno precompilati di conseguenza. L'integrazione funziona con qualsiasi citofono IP che esponga a Home Assistant chiamata, pulsanti e video; la marca serve solo a semplificare la configurazione.",
+        "data": {
+          "brand": "Marca del videocitofono"
+        }
+      },
+      "config": {
+        "title": "Notifiche e plancia",
+        "description": "Quando il videocitofono squilla, avvisa i telefoni scelti con una notifica azionabile (Rispondi / Apriporta / Riaggancia) e, sui dispositivi abilitati, apre la plancia. I campi sono precompilati in base alla marca scelta: cambiali se serve.",
         "data": {
           "enable_notify": "Attiva le notifiche",
           "notify_targets": "Telefoni da avvisare",
