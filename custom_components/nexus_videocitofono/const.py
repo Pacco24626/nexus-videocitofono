@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.2.9"
+VERSION = "0.3.0"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura
@@ -86,6 +86,7 @@ ADDON_UNIQUE_IDS = {
     "hangup": ("button", "vimar_vdc_hangup"),
     "status_sensor": ("sensor", "vimar_vdc_status"),  # stato conversazione (guardiano)
     "reg_sensor": ("sensor", "vimar_vdc_reg"),  # registrazione SIP (chip di stato della card)
+    "autostart": ("button", "vimar_vdc_monitor"),  # Autoaccensione (chiama la targa senza suonata); solo marche che la supportano
 }
 
 # --- notifiche azionabili (app Companion) ---

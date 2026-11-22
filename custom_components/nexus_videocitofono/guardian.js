@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.2.9";
+  var VERSION = "0.3.0";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;
@@ -169,7 +169,15 @@
     ".cmd:active{transform:scale(.96)}";
 
   var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0, rtc = null, audioOn = false;
-  var wd = null, tries = 0, guardConnecting = false, lastPreview = true;
+  var wd = null, tries = 0, guardConnecting = false, lastPreview = true, rang = false, wasDialing = false;
+
+  // Autoaccensione in corso? (attributo dialing del sensore Stato, o testo "autoaccensione...").
+  function dialingNow(hass) {
+    if (!cfg || !cfg.status_sensor) return false;
+    var s = hass.states[cfg.status_sensor];
+    if (!s) return false;
+    return !!(s.attributes && s.attributes.dialing) || /autoaccens/.test((s.state || "").toLowerCase());
+  }
 
   // Anteprima disponibile? Flag esposto dall'add-on (>=0.3.3) come attributo del sensore
   // Stato. Assente (add-on vecchio / nessun ponte) o true => anteprima presente (Dahua).
@@ -386,9 +394,13 @@
     var hass = getHass();
     if (!hass) return;
     if (!cfg) { ensureCfg(hass); return; }
-    if (!lsGet()) { if (host) close(); dismissed = false; shownAt = 0; return; } // non abilitato qui
+    if (!lsGet()) { if (host) close(); dismissed = false; shownAt = 0; rang = false; wasDialing = false; return; } // non abilitato qui
     var now = Date.now();
     var sa = statoActive(hass);
+    var on = callIsOn(hass);
+    if (on) rang = true; // ha SQUILLATO in questo ciclo (chiamata in arrivo = incoming)
+    var dialing = dialingNow(hass);
+    if (dialing) wasDialing = true; // autoaccensione in corso in questo ciclo
     var active;
     if (sa !== null) {
       // add-on: "in corso" finche' lo Stato non torna "a riposo" (NON sul binary OFF).
@@ -397,12 +409,16 @@
       // fallback: mentre il sensore di chiamata e' ON, OPPURE — una volta aperta — per
       // almeno hold_sec dall'apertura (copre i sensori a impulso ~5 s). La finestra
       // parte da shownAt (non si aggiorna mentre e' ON: niente scia dopo una chiamata lunga).
-      var on = callIsOn(hass);
       active = on || (!!host && shownAt && now < shownAt + holdMs());
     }
-    if (!active) { if (host) close(); dismissed = false; shownAt = 0; return; } // fine: reset + chiudi
+    if (!active) { if (host) close(); dismissed = false; shownAt = 0; rang = false; wasDialing = false; return; } // fine: reset + chiudi
     if (host) { refreshVideo(hass); refreshButtons(hass); syncPlayer(hass); return; }
-    if (!dismissed) { show(hass); shownAt = now; } // non riaprire se l'utente ha chiuso QUESTA chiamata
+    // Apri la plancia automatica SOLO per una chiamata IN ARRIVO: ha squillato ora (rang)
+    // oppure e' una conversazione non nata da autoaccensione (statoActive true, non in dialing
+    // ne' passati dal dialing in questo ciclo). `rang || sa===true` ripristina su 0.3.3 il
+    // comportamento di 0.2.9 (riapre su reload a chiamata gia' in corso); `!wasDialing && !dialing`
+    // impedisce alla plancia di comparire per un'autoaccensione (binary sempre OFF).
+    if (!dismissed && !wasDialing && !dialing && (rang || sa === true)) { show(hass); shownAt = now; }
   }
 
   setInterval(tick, 1000);

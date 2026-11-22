@@ -148,12 +148,13 @@ def _async_register_ws(hass: HomeAssistant) -> None:
             "hold_sec": hold,
             "status_sensor": None,  # sensore "Stato" dell'add-on (tiene aperto in conversazione)
             "reg_sensor": None,  # sensore "Registrazione SIP" (chip di stato della card)
+            "autostart": None,  # button "Autoaccensione" (chiama la targa senza suonata); None se la marca non la supporta
         }
         # Con l'add-on ON: le sue entita' (risolte per unique_id) VINCONO sui CONF_*
         # manuali, e la camera e' lo stream "intercom" dell'integrazione.
         if use_addon:
             addon = resolve_addon(hass)
-            for key in ("call_sensor", "answer", "door", "hangup", "status_sensor", "reg_sensor"):
+            for key in ("call_sensor", "answer", "door", "hangup", "status_sensor", "reg_sensor", "autostart"):
                 if addon.get(key):
                     result[key] = addon[key]
             if entry:
