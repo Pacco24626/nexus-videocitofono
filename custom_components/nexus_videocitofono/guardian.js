@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.2.3";
+  var VERSION = "0.2.4";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;
@@ -40,6 +40,63 @@
     if (!ent) return;
     var s = PRESS[ent.split(".")[0]];
     if (s) try { hass.callService(s[0], s[1], { entity_id: ent }); } catch (e) {}
+  }
+
+  // Player WebRTC incorporato: una RTCPeerConnection NOSTRA + l'API WS di HA
+  // (camera/webrtc/offer). Gli elementi ha-camera-stream/ha-web-rtc-player non si
+  // cablano in un overlay; questo invece riproduce una qualsiasi camera entity
+  // (Dahua grezza oggi, lo stream go2rtc dell'add-on domani). Restituisce {stop()}.
+  function startWebRTC(hass, entityId, videoEl, onFail) {
+    var H = { stopped: false, pc: null, unsub: null, sid: null, candQ: [] };
+    var pc;
+    try { pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] }); }
+    catch (e) { if (onFail) onFail(); return H; }
+    H.pc = pc;
+    var stream = new MediaStream();
+    try { videoEl.srcObject = stream; } catch (e) {}
+    pc.addTransceiver("video", { direction: "recvonly" });
+    pc.addTransceiver("audio", { direction: "recvonly" });
+    pc.ontrack = function (e) {
+      try { stream.addTrack(e.track); } catch (x) {}
+      if (videoEl.play) videoEl.play().catch(function () {});
+    };
+    function sendCand(c) {
+      if (H.stopped || !H.sid) return;
+      try {
+        hass.connection.sendMessagePromise({
+          type: "camera/webrtc/candidate", entity_id: entityId, session_id: H.sid,
+          candidate: { candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex }
+        }).catch(function () {});
+      } catch (x) {}
+    }
+    pc.onicecandidate = function (e) {
+      if (!e.candidate) return;
+      if (H.sid) sendCand(e.candidate); else H.candQ.push(e.candidate);
+    };
+    pc.oniceconnectionstatechange = function () {
+      if (pc.iceConnectionState === "failed" && onFail) onFail();
+    };
+    pc.createOffer().then(function (offer) {
+      return pc.setLocalDescription(offer).then(function () { return offer; });
+    }).then(function () {
+      if (H.stopped) return;
+      return hass.connection.subscribeMessage(function (msg) {
+        if (H.stopped) return;
+        if (msg.type === "session") { H.sid = msg.session_id; H.candQ.forEach(sendCand); H.candQ = []; }
+        else if (msg.type === "answer") { pc.setRemoteDescription({ type: "answer", sdp: msg.answer }).catch(function () {}); }
+        else if (msg.type === "candidate") { try { pc.addIceCandidate(msg.candidate); } catch (x) {} }
+        else if (msg.type === "error") { if (onFail) onFail(); }
+      }, { type: "camera/webrtc/offer", entity_id: entityId, offer: pc.localDescription.sdp }).then(
+        function (unsub) { if (H.stopped) { try { unsub(); } catch (x) {} } else H.unsub = unsub; },
+        function () { if (onFail) onFail(); }
+      );
+    }).catch(function () { if (onFail) onFail(); });
+    H.stop = function () {
+      H.stopped = true;
+      try { if (H.unsub) H.unsub(); } catch (e) {}
+      try { pc.close(); } catch (e) {}
+    };
+    return H;
   }
 
   // ====================== card: interruttore per-dispositivo ======================
@@ -91,7 +148,9 @@
     ".ttl{font-size:18px;font-weight:600}" +
     ".x{border:0;background:var(--secondary-background-color,#eee);width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--primary-text-color)}" +
     ".video{position:relative;background:#141414;border-radius:14px;aspect-ratio:16/10;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#8A8A8A;cursor:pointer}" +
-    ".video img{width:100%;height:100%;object-fit:cover;display:block}" +
+    ".video img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}" +
+    ".video video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;background:#141414}" +
+    ".video video.nxon{display:block}" +
     ".parla{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.55);color:#fff;padding:4px 12px;border-radius:999px;font-size:11px}" +
     ".parla ha-icon{--mdc-icon-size:15px}" +
     ".cmds{display:grid;gap:10px;margin-top:14px}" +
@@ -100,7 +159,7 @@
     ".cmd .cer ha-icon{--mdc-icon-size:28px;color:#fff}" +
     ".cmd:active{transform:scale(.96)}";
 
-  var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0;
+  var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0, rtc = null;
 
   // Per quanti ms tenere aperta la plancia dopo l'apertura, anche se il sensore di
   // chiamata e' gia' tornato OFF (dato dall'integrazione via WS: molti citofoni, es.
@@ -127,13 +186,17 @@
   }
 
   function videoHTML(hass, c) {
-    var cam = c.camera && hass.states[c.camera];
-    var pic = cam && cam.attributes && cam.attributes.entity_picture;
-    if (pic) {
-      return '<div class="video" id="video"><img id="img" src="' + esc(pic) + '">' +
-        '<div class="parla"><ha-icon icon="mdi:microphone"></ha-icon>tocca per parlare</div></div>';
+    if (!c.camera) {
+      return '<div class="video" id="video"><ha-icon icon="mdi:cctv" style="--mdc-icon-size:46px;color:#bbb"></ha-icon></div>';
     }
-    return '<div class="video" id="video"><ha-icon icon="mdi:cctv" style="--mdc-icon-size:46px;color:#bbb"></ha-icon></div>';
+    // Poster = snapshot istantaneo (entity_picture) mostrato subito; sopra, il <video>
+    // WebRTC che lo copre appena parte il live. Cosi' niente schermo nero in attesa.
+    var cam = hass.states[c.camera];
+    var pic = cam && cam.attributes && cam.attributes.entity_picture;
+    var poster = pic ? '<img id="img" src="' + esc(pic) + '">' : "";
+    return '<div class="video" id="video">' + poster +
+      '<video id="live" autoplay playsinline muted></video>' +
+      '<div class="parla"><ha-icon icon="mdi:microphone"></ha-icon>tocca per parlare</div></div>';
   }
 
   function overlayHTML(hass, c) {
@@ -163,8 +226,8 @@
     sr = host.attachShadow({ mode: "open" });
     sr.innerHTML = overlayHTML(hass, c);
     document.body.appendChild(host);
-    var $ = function (id) { return sr.getElementById(id); };
-    $("bd").addEventListener("click", function (e) { if (e.target === $("bd")) close(); });
+    var $ = function (id) { return sr && sr.getElementById(id); };
+    if ($("bd")) $("bd").addEventListener("click", function (e) { if (e.target === $("bd")) userDismiss(); });
     if ($("close")) $("close").onclick = userDismiss;
     if (c.answer && $("answer")) $("answer").onclick = function () { activate(hass, c.answer); };
     if (c.door && $("door")) $("door").onclick = function () { activate(hass, c.door); };
@@ -172,6 +235,12 @@
     if (c.camera && $("video")) $("video").onclick = function () {
       host.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: c.camera }, bubbles: true, composed: true }));
     };
+    // Video live via WebRTC: copre il poster snapshot appena parte lo stream.
+    var vid = c.camera && $("live");
+    if (vid) {
+      vid.addEventListener("playing", function () { vid.classList.add("nxon"); });
+      rtc = startWebRTC(hass, c.camera, vid, null);
+    }
   }
 
   function refreshVideo(hass) {
@@ -182,7 +251,10 @@
     if (img && pic && img.getAttribute("src") !== pic) img.setAttribute("src", pic);
   }
 
-  function close() { if (host) { host.remove(); host = null; sr = null; } }
+  function close() {
+    if (rtc) { try { rtc.stop(); } catch (e) {} rtc = null; }
+    if (host) { host.remove(); host = null; sr = null; }
+  }
   function userDismiss() { dismissed = true; close(); } // chiusura utente: non riaprire finche' squilla
 
   function tick() {
