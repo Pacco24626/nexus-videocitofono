@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.2.8";
+  var VERSION = "0.2.9";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;
@@ -157,6 +157,10 @@
     ".spk ha-icon{--mdc-icon-size:17px}" +
     ".spk.on{background:#2E9E6B;color:#fff}" +
     ".vbg{color:#555;--mdc-icon-size:46px}" +
+    ".conn{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:8px;background:rgba(20,20,20,.55);color:#E8E8E8;font-size:12px}" +
+    ".conn.on{display:flex}" +
+    ".conn .dot{width:8px;height:8px;border-radius:50%;background:#2E9E6B;animation:nxblink 1s ease-in-out infinite}" +
+    "@keyframes nxblink{0%,100%{opacity:1}50%{opacity:.4}}" +
     ".cmd.disab{opacity:.45;cursor:default}.cmd.disab:active{transform:none}" +
     ".cmds{display:grid;gap:10px;margin-top:14px}" +
     ".cmd{display:flex;flex-direction:column;align-items:center;gap:8px;border:0;background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--primary-text-color,#1F2933)}" +
@@ -165,6 +169,65 @@
     ".cmd:active{transform:scale(.96)}";
 
   var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0, rtc = null, audioOn = false;
+  var wd = null, tries = 0, guardConnecting = false, lastPreview = true;
+
+  // Anteprima disponibile? Flag esposto dall'add-on (>=0.3.3) come attributo del sensore
+  // Stato. Assente (add-on vecchio / nessun ponte) o true => anteprima presente (Dahua).
+  // False (Vimar): il video esiste solo in chiamata -> player aperto a "in conversazione".
+  // Stato giu' (unavailable/unknown): attributi persi -> uso l'ultimo valore noto, NON
+  // assumo anteprima (aprirebbe la camera Vimar fuori conversazione).
+  function previewAvail(hass) {
+    if (!cfg || !cfg.status_sensor) return true;
+    var s = hass.states[cfg.status_sensor];
+    if (s && (s.state === "unavailable" || s.state === "unknown")) return lastPreview;
+    var v = s && s.attributes ? s.attributes.preview_before_answer : undefined;
+    var res = v === undefined ? true : !!v;
+    lastPreview = res;
+    return res;
+  }
+  function liveVid() { return sr && sr.getElementById("live"); }
+  function renderConnecting() {
+    var el = sr && sr.getElementById("conn");
+    var v = liveVid();
+    if (el) el.className = "conn" + ((guardConnecting && v && v.videoWidth === 0) ? " on" : "");
+  }
+  function clearWatchdog() { if (wd) { try { clearTimeout(wd); } catch (e) {} wd = null; } }
+  // Senza anteprima il video arriva solo a chi si collega a video GIA' partito: se dopo
+  // qualche secondo non ci sono frame, richiudo e riapro (rinegozio), per qualche tentativo.
+  function armWatchdog(hass) {
+    clearWatchdog();
+    wd = setTimeout(function () {
+      wd = null;
+      var v = liveVid();
+      if (!rtc || !v || !host) return;
+      if (v.videoWidth > 0) { guardConnecting = false; renderConnecting(); return; }
+      if (tries >= 3) { guardConnecting = false; renderConnecting(); return; } // basta: resta l'audio
+      tries++;
+      try { rtc.stop(); } catch (e) {}
+      rtc = null;
+      if (cfg && cfg.camera) rtc = startWebRTC(hass, cfg.camera, v, null);
+      armWatchdog(hass);
+    }, 5000);
+  }
+  function startPlayer(hass) {
+    if (rtc) return;
+    var v = liveVid();
+    if (!v || !cfg || !cfg.camera) return;
+    guardConnecting = !previewAvail(hass);
+    renderConnecting();
+    rtc = startWebRTC(hass, cfg.camera, v, null);
+    if (!previewAvail(hass)) { tries = 0; armWatchdog(hass); }
+  }
+  function stopPlayer() {
+    clearWatchdog();
+    if (rtc) { try { rtc.stop(); } catch (e) {} rtc = null; }
+    guardConnecting = false; renderConnecting();
+  }
+  // Player voluto quando l'overlay e' aperto E (anteprima presente, oppure in conversazione).
+  function syncPlayer(hass) {
+    if (!host) return;
+    if (previewAvail(hass) || convActive(hass)) startPlayer(hass); else stopPlayer();
+  }
 
   // Audio della targa nell'overlay: il <video> parte muto (l'autoplay muto non viene
   // bloccato); si smuta solo su gesto utente (Rispondi o il tasto altoparlante).
@@ -228,6 +291,7 @@
     return '<div class="video" id="video">' +
       '<ha-icon class="vbg" icon="mdi:cctv"></ha-icon>' + poster +
       '<video id="live" autoplay playsinline muted></video>' +
+      '<div class="conn" id="conn"><span class="dot"></span>collegamento in corso…</div>' +
       '<div class="spk" id="spk"><ha-icon icon="mdi:volume-off"></ha-icon></div>' +
       '<div class="parla"><ha-icon icon="mdi:microphone"></ha-icon>tocca per parlare</div></div>';
   }
@@ -276,11 +340,18 @@
     if ($("spk")) $("spk").onclick = function (e) { e.stopPropagation(); setOverlayAudio(!audioOn); };
     var img0 = $("img");
     if (img0) img0.onerror = function () { img0.style.display = "none"; };
-    // Video live via WebRTC: copre il poster snapshot appena parte lo stream.
+    // Video live via WebRTC. Rivela il video a frame arrivati; con anteprima al "playing".
+    // Su marche senza anteprima (Vimar) il player si apre solo "in conversazione" (syncPlayer,
+    // chiamato qui e dal tick); se arriva solo audio richiude e riapre (vedi armWatchdog).
     var vid = c.camera && $("live");
     if (vid) {
-      vid.addEventListener("playing", function () { vid.classList.add("nxon"); });
-      rtc = startWebRTC(hass, c.camera, vid, null);
+      var reveal = function () {
+        if (previewAvail(hass)) { vid.classList.add("nxon"); }
+        else if (vid.videoWidth > 0) { vid.classList.add("nxon"); guardConnecting = false; renderConnecting(); }
+      };
+      vid.addEventListener("playing", reveal);
+      vid.addEventListener("resize", reveal);
+      syncPlayer(hass);
     }
   }
 
@@ -293,9 +364,10 @@
   }
 
   function close() {
+    clearWatchdog();
     if (rtc) { try { rtc.stop(); } catch (e) {} rtc = null; }
     if (host) { host.remove(); host = null; sr = null; }
-    audioOn = false;
+    audioOn = false; guardConnecting = false; tries = 0;
   }
   function userDismiss() { dismissed = true; close(); } // chiusura utente: non riaprire finche' squilla
 
@@ -329,7 +401,7 @@
       active = on || (!!host && shownAt && now < shownAt + holdMs());
     }
     if (!active) { if (host) close(); dismissed = false; shownAt = 0; return; } // fine: reset + chiudi
-    if (host) { refreshVideo(hass); refreshButtons(hass); return; }
+    if (host) { refreshVideo(hass); refreshButtons(hass); syncPlayer(hass); return; }
     if (!dismissed) { show(hass); shownAt = now; } // non riaprire se l'utente ha chiuso QUESTA chiamata
   }
 
