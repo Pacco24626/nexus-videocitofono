@@ -26,9 +26,11 @@
           "camera": "Camera (optional)",
           "dashboard_path": "Dashboard to open on tap",
           "title": "Notification title",
-          "message": "Notification text"
+          "message": "Notification text",
+          "ring_hold_sec": "Keep the panel open for (seconds)"
         },
         "data_description": {
+          "ring_hold_sec": "The automatic panel stays open at least this many seconds after a ring. Useful for intercoms that signal the call with a short pulse (e.g. Dahua ~5 s), which would otherwise vanish immediately. 0 = close as soon as the ring ends. Default 60.",
           "notify_targets": "Requires the Home Assistant app on the phone. If it is not listed, type the service name (e.g. mobile_app_johns_iphone).",
           "answer_button": "Leave empty if your intercom has no two-way answer.",
           "hangup_button": "Leave empty if your intercom has no hang-up.",

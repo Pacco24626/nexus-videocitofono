@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_ENABLE_NOTIFY = "enable_notify"
@@ -20,6 +20,11 @@ CONF_CAMERA = "camera"
 CONF_DASHBOARD_PATH = "dashboard_path"
 CONF_TITLE = "title"
 CONF_MESSAGE = "message"
+# Per quanti secondi tenere aperta la plancia automatica dopo che il sensore di
+# chiamata si e' acceso. Serve ai sensori "a impulso" (molti citofoni, es. Dahua,
+# tengono il sensore ON solo pochi secondi per suonata): senza questo la plancia
+# si richiuderebbe da sola subito. 0 = chiudi appena il sensore torna OFF.
+CONF_RING_HOLD_SEC = "ring_hold_sec"
 
 # --- default (Vimar By-me, ma riconfigurabili) ---
 DEFAULT_CALL_SENSOR = "binary_sensor.vimar_videocitofonia_chiamata_in_arrivo"
@@ -29,6 +34,7 @@ DEFAULT_HANGUP_BUTTON = "button.vimar_videocitofonia_riaggancia"
 DEFAULT_DASHBOARD = "/videocitofono-vimar/citofono"
 DEFAULT_TITLE = "\U0001F514 Videocitofono"
 DEFAULT_MESSAGE = "Qualcuno sta suonando al videocitofono."
+DEFAULT_RING_HOLD_SEC = 60
 
 # --- notifiche azionabili (app Companion) ---
 EVENT_ACTION = "mobile_app_notification_action"

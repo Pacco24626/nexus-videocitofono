@@ -42,6 +42,7 @@ from .const import (
     CONF_HANGUP_BUTTON,
     CONF_MESSAGE,
     CONF_NOTIFY_TARGETS,
+    CONF_RING_HOLD_SEC,
     CONF_TITLE,
     DEFAULT_ANSWER_BUTTON,
     DEFAULT_CALL_SENSOR,
@@ -49,6 +50,7 @@ from .const import (
     DEFAULT_DOOR_BUTTON,
     DEFAULT_HANGUP_BUTTON,
     DEFAULT_MESSAGE,
+    DEFAULT_RING_HOLD_SEC,
     DEFAULT_TITLE,
     DOMAIN,
 )
@@ -153,6 +155,22 @@ class NexusVideocitofonoOptionsFlow(OptionsFlow):
                     CONF_MESSAGE,
                     description={"suggested_value": cur.get(CONF_MESSAGE, DEFAULT_MESSAGE)},
                 ): selector.TextSelector(),
+                vol.Optional(
+                    CONF_RING_HOLD_SEC,
+                    description={
+                        "suggested_value": cur.get(
+                            CONF_RING_HOLD_SEC, DEFAULT_RING_HOLD_SEC
+                        )
+                    },
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0,
+                        max=300,
+                        step=5,
+                        unit_of_measurement="s",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

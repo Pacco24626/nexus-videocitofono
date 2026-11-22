@@ -26,9 +26,11 @@
           "camera": "Telecamera (opzionale)",
           "dashboard_path": "Plancia da aprire al tocco",
           "title": "Titolo della notifica",
-          "message": "Testo della notifica"
+          "message": "Testo della notifica",
+          "ring_hold_sec": "Tieni aperta la plancia per (secondi)"
         },
         "data_description": {
+          "ring_hold_sec": "La plancia automatica resta aperta almeno questi secondi dopo la suonata. Utile per i citofoni che segnalano la chiamata con un impulso breve (es. Dahua ~5 s): senza, sparirebbe subito. 0 = chiudi appena finisce la suonata. Predefinito 60.",
           "notify_targets": "Serve l'app Home Assistant sul telefono. Se non e' in elenco, digita il nome del servizio (es. mobile_app_iphone_di_mario).",
           "answer_button": "Lascia vuoto se il tuo citofono non ha il «rispondi» a due vie.",
           "hangup_button": "Lascia vuoto se il tuo citofono non ha il «riaggancia».",

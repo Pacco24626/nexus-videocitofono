@@ -27,8 +27,10 @@ from .const import (
     CONF_DASHBOARD_PATH,
     CONF_DOOR_BUTTON,
     CONF_HANGUP_BUTTON,
+    CONF_RING_HOLD_SEC,
     CONF_TITLE,
     DEFAULT_CALL_SENSOR,
+    DEFAULT_RING_HOLD_SEC,
     DEFAULT_TITLE,
     DOMAIN,
     GUARDIAN_URL,
@@ -95,6 +97,9 @@ def _async_register_ws(hass: HomeAssistant) -> None:
     def _ws_config(hass, connection, msg):
         entries = hass.config_entries.async_entries(DOMAIN)
         opt = dict(entries[0].options) if entries else {}
+        hold = opt.get(CONF_RING_HOLD_SEC)
+        if hold is None:
+            hold = DEFAULT_RING_HOLD_SEC  # 0 e' valido ("chiudi subito"), quindi niente `or`
         connection.send_result(
             msg["id"],
             {
@@ -105,6 +110,7 @@ def _async_register_ws(hass: HomeAssistant) -> None:
                 "camera": opt.get(CONF_CAMERA) or None,
                 "dashboard": opt.get(CONF_DASHBOARD_PATH) or None,
                 "title": opt.get(CONF_TITLE) or DEFAULT_TITLE,
+                "hold_sec": hold,
             },
         )
 

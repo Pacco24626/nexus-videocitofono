@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.2.1";
+  var VERSION = "0.2.2";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;
@@ -100,7 +100,15 @@
     ".cmd .cer ha-icon{--mdc-icon-size:28px;color:#fff}" +
     ".cmd:active{transform:scale(.96)}";
 
-  var cfg = null, host = null, sr = null, dismissed = false;
+  var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0;
+
+  // Per quanti ms tenere aperta la plancia dopo l'apertura, anche se il sensore di
+  // chiamata e' gia' tornato OFF (dato dall'integrazione via WS: molti citofoni, es.
+  // Dahua, tengono il sensore ON solo ~5 s per suonata). 0 = chiudi appena va OFF.
+  function holdMs() {
+    var h = (cfg && typeof cfg.hold_sec === "number") ? cfg.hold_sec : 60;
+    return h * 1000;
+  }
 
   function ensureCfg(hass) {
     if (cfg) return;
@@ -181,11 +189,18 @@
     var hass = getHass();
     if (!hass) return;
     if (!cfg) { ensureCfg(hass); return; }
-    if (!lsGet()) { if (host) close(); dismissed = false; return; } // non abilitato qui
+    if (!lsGet()) { if (host) close(); dismissed = false; shownAt = 0; return; } // non abilitato qui
     var on = callIsOn(hass);
-    if (!on) { dismissed = false; if (host) close(); return; } // fine chiamata: reset + chiudi
+    var now = Date.now();
+    // "Chiamata in corso" per la plancia: mentre il sensore e' ON, OPPURE — una volta
+    // aperta — per almeno hold_sec dall'apertura (copre i sensori a impulso ~5 s). Se
+    // invece il sensore resta ON a lungo (Vimar), alla fine chiamata si chiude subito.
+    // La finestra parte da shownAt (NON si aggiorna mentre e' ON: niente scia dopo
+    // una chiamata lunga). Se l'utente ha chiuso, host e' null: non si riapre.
+    var active = on || (!!host && shownAt && now < shownAt + holdMs());
+    if (!active) { if (host) close(); dismissed = false; shownAt = 0; return; } // fine: reset + chiudi
     if (host) { refreshVideo(hass); return; }
-    if (!dismissed) show(hass); // non riaprire se l'utente ha chiuso QUESTA chiamata
+    if (!dismissed) { show(hass); shownAt = now; } // non riaprire se l'utente ha chiuso QUESTA chiamata
   }
 
   setInterval(tick, 1000);
