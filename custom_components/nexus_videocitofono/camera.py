@@ -39,8 +39,13 @@ class VideocitofonoCamera(Camera):
     def _rtsp(self) -> str:
         return self._entry.options.get(CONF_ADDON_RTSP) or DEFAULT_ADDON_RTSP
 
-    async def async_stream_source(self) -> str | None:
-        """URL passato verbatim al go2rtc di HA."""
+    async def stream_source(self) -> str | None:
+        """URL passato al provider go2rtc di HA (che fa il WebRTC).
+
+        ATTENZIONE: il metodo si chiama `stream_source` (coroutine SENZA il prefisso
+        `async_`): con `async_stream_source` HA usa quello della base -> None -> la
+        camera risulta "HLS only / does not support streaming".
+        """
         return self._rtsp()
 
     async def async_camera_image(
