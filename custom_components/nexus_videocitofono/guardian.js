@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.2.6";
+  var VERSION = "0.2.8";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;
@@ -153,13 +153,42 @@
     ".video video.nxon{display:block}" +
     ".parla{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.55);color:#fff;padding:4px 12px;border-radius:999px;font-size:11px}" +
     ".parla ha-icon{--mdc-icon-size:15px}" +
+    ".spk{position:absolute;top:10px;right:12px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#F2F2F2}" +
+    ".spk ha-icon{--mdc-icon-size:17px}" +
+    ".spk.on{background:#2E9E6B;color:#fff}" +
+    ".vbg{color:#555;--mdc-icon-size:46px}" +
+    ".cmd.disab{opacity:.45;cursor:default}.cmd.disab:active{transform:none}" +
     ".cmds{display:grid;gap:10px;margin-top:14px}" +
     ".cmd{display:flex;flex-direction:column;align-items:center;gap:8px;border:0;background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--primary-text-color,#1F2933)}" +
     ".cmd .cer{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center}" +
     ".cmd .cer ha-icon{--mdc-icon-size:28px;color:#fff}" +
     ".cmd:active{transform:scale(.96)}";
 
-  var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0, rtc = null;
+  var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0, rtc = null, audioOn = false;
+
+  // Audio della targa nell'overlay: il <video> parte muto (l'autoplay muto non viene
+  // bloccato); si smuta solo su gesto utente (Rispondi o il tasto altoparlante).
+  function setOverlayAudio(on) {
+    audioOn = !!on;
+    var v = sr && sr.getElementById("live");
+    if (v) { try { v.muted = !audioOn; } catch (e) {} }
+    var spk = sr && sr.getElementById("spk");
+    if (spk) {
+      spk.className = "spk" + (audioOn ? " on" : "");
+      var ic = spk.querySelector("ha-icon");
+      if (ic) ic.setAttribute("icon", audioOn ? "mdi:volume-high" : "mdi:volume-off");
+    }
+  }
+  function convActive(hass) {
+    if (!cfg || !cfg.status_sensor) return false;
+    var s = hass.states[cfg.status_sensor];
+    return !!(s && /convers/.test((s.state || "").toLowerCase()));
+  }
+  function refreshButtons(hass) {
+    if (!sr) return;
+    var a = sr.getElementById("answer");
+    if (a) { if (convActive(hass)) a.classList.add("disab"); else a.classList.remove("disab"); }
+  }
 
   // Per quanti ms tenere aperta la plancia dopo l'apertura, anche se il sensore di
   // chiamata e' gia' tornato OFF (dato dall'integrazione via WS: molti citofoni, es.
@@ -194,8 +223,12 @@
     var cam = hass.states[c.camera];
     var pic = cam && cam.attributes && cam.attributes.entity_picture;
     var poster = pic ? '<img id="img" src="' + esc(pic) + '">' : "";
-    return '<div class="video" id="video">' + poster +
+    // Sfondo = icona cctv (lo still intercom non c'e' -> onerror nasconde l'img, niente
+    // icona immagine rotta); sopra il <video> live; in alto a dx il tasto altoparlante.
+    return '<div class="video" id="video">' +
+      '<ha-icon class="vbg" icon="mdi:cctv"></ha-icon>' + poster +
       '<video id="live" autoplay playsinline muted></video>' +
+      '<div class="spk" id="spk"><ha-icon icon="mdi:volume-off"></ha-icon></div>' +
       '<div class="parla"><ha-icon icon="mdi:microphone"></ha-icon>tocca per parlare</div></div>';
   }
 
@@ -226,15 +259,23 @@
     sr = host.attachShadow({ mode: "open" });
     sr.innerHTML = overlayHTML(hass, c);
     document.body.appendChild(host);
+    audioOn = false; // ogni overlay nuovo parte muto
     var $ = function (id) { return sr && sr.getElementById(id); };
     if ($("bd")) $("bd").addEventListener("click", function (e) { if (e.target === $("bd")) userDismiss(); });
     if ($("close")) $("close").onclick = userDismiss;
-    if (c.answer && $("answer")) $("answer").onclick = function () { activate(hass, c.answer); };
+    // Rispondi = gesto utente -> smuto l'audio; bloccato se gia' "in conversazione"
+    // (due dispositivi che rispondono riavviano il relay audio dell'add-on).
+    if (c.answer && $("answer")) $("answer").onclick = function () { if (convActive(hass)) return; activate(hass, c.answer); setOverlayAudio(true); };
     if (c.door && $("door")) $("door").onclick = function () { activate(hass, c.door); };
     if (c.hangup && $("hangup")) $("hangup").onclick = function () { activate(hass, c.hangup); userDismiss(); };
     if (c.camera && $("video")) $("video").onclick = function () {
       host.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: c.camera }, bubbles: true, composed: true }));
     };
+    // Tasto altoparlante: smuta/muta senza rispondere; stopPropagation per non aprire
+    // la vista nativa (click sul .video). Still mancante (camera intercom): lo nascondo.
+    if ($("spk")) $("spk").onclick = function (e) { e.stopPropagation(); setOverlayAudio(!audioOn); };
+    var img0 = $("img");
+    if (img0) img0.onerror = function () { img0.style.display = "none"; };
     // Video live via WebRTC: copre il poster snapshot appena parte lo stream.
     var vid = c.camera && $("live");
     if (vid) {
@@ -254,6 +295,7 @@
   function close() {
     if (rtc) { try { rtc.stop(); } catch (e) {} rtc = null; }
     if (host) { host.remove(); host = null; sr = null; }
+    audioOn = false;
   }
   function userDismiss() { dismissed = true; close(); } // chiusura utente: non riaprire finche' squilla
 
@@ -287,7 +329,7 @@
       active = on || (!!host && shownAt && now < shownAt + holdMs());
     }
     if (!active) { if (host) close(); dismissed = false; shownAt = 0; return; } // fine: reset + chiudi
-    if (host) { refreshVideo(hass); return; }
+    if (host) { refreshVideo(hass); refreshButtons(hass); return; }
     if (!dismissed) { show(hass); shownAt = now; } // non riaprire se l'utente ha chiuso QUESTA chiamata
   }
 
