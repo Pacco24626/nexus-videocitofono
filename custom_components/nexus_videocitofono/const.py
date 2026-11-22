@@ -71,7 +71,10 @@ CONF_EXTENSION = "extension"
 # (NON 127.0.0.1: HA Core gira in un container separato). Configurabile; default =
 # gateway hassio (l'host visto dal Core). Da verificare sul campo.
 CONF_ADDON_RTSP = "addon_rtsp"
-DEFAULT_ADDON_RTSP = "rtsp://172.30.32.1:8554/intercom"
+# Su HAOS il container Core gira con la rete dell'host, quindi 127.0.0.1 E' l'host e
+# raggiunge il go2rtc dell'add-on (host_network, bind :8554 su tutte le interfacce).
+# 172.30.32.1 (gateway hassio) e' il ripiego; l'IP LAN e' install-specifico, non qui.
+DEFAULT_ADDON_RTSP = "rtsp://127.0.0.1:8554/intercom"
 
 # Entita' del device MQTT dell'add-on, per UNIQUE_ID stabile (gli entity_id NON sono
 # deducibili: vanno risolti dal registro, platform "mqtt"). Vedi
