@@ -8,7 +8,7 @@
  */
 (function () {
   "use strict";
-  var VERSION = "0.2.4";
+  var VERSION = "0.2.6";
   var LS_KEY = "nexus_vdc_guardian"; // "1" = abilitato su questo dispositivo
   if (window.__nexusVdcGuardian) return;
   window.__nexusVdcGuardian = true;
@@ -257,19 +257,35 @@
   }
   function userDismiss() { dismissed = true; close(); } // chiusura utente: non riaprire finche' squilla
 
+  // Con l'add-on: il sensore STATO comanda. Torna true (in corso) / false (a riposo)
+  // / null (sconosciuto -> usa il fallback sul sensore di chiamata). Serve perche' con
+  // l'add-on il binary_sensor va OFF appena si RISPONDE, mentre la conversazione
+  // continua: chiudere sul binary OFF farebbe sparire la plancia mentre si parla.
+  function statoActive(hass) {
+    if (!cfg || !cfg.status_sensor) return null;
+    var s = hass.states[cfg.status_sensor];
+    if (!s || s.state === "unavailable" || s.state === "unknown") return null;
+    return s.state !== "a riposo";
+  }
+
   function tick() {
     var hass = getHass();
     if (!hass) return;
     if (!cfg) { ensureCfg(hass); return; }
     if (!lsGet()) { if (host) close(); dismissed = false; shownAt = 0; return; } // non abilitato qui
-    var on = callIsOn(hass);
     var now = Date.now();
-    // "Chiamata in corso" per la plancia: mentre il sensore e' ON, OPPURE — una volta
-    // aperta — per almeno hold_sec dall'apertura (copre i sensori a impulso ~5 s). Se
-    // invece il sensore resta ON a lungo (Vimar), alla fine chiamata si chiude subito.
-    // La finestra parte da shownAt (NON si aggiorna mentre e' ON: niente scia dopo
-    // una chiamata lunga). Se l'utente ha chiuso, host e' null: non si riapre.
-    var active = on || (!!host && shownAt && now < shownAt + holdMs());
+    var sa = statoActive(hass);
+    var active;
+    if (sa !== null) {
+      // add-on: "in corso" finche' lo Stato non torna "a riposo" (NON sul binary OFF).
+      active = sa;
+    } else {
+      // fallback: mentre il sensore di chiamata e' ON, OPPURE — una volta aperta — per
+      // almeno hold_sec dall'apertura (copre i sensori a impulso ~5 s). La finestra
+      // parte da shownAt (non si aggiorna mentre e' ON: niente scia dopo una chiamata lunga).
+      var on = callIsOn(hass);
+      active = on || (!!host && shownAt && now < shownAt + holdMs());
+    }
     if (!active) { if (host) close(); dismissed = false; shownAt = 0; return; } // fine: reset + chiudi
     if (host) { refreshVideo(hass); return; }
     if (!dismissed) { show(hass); shownAt = now; } // non riaprire se l'utente ha chiuso QUESTA chiamata

@@ -3,11 +3,11 @@
   "name": "Nexus Videocitofono",
   "codeowners": ["@Pacco24626"],
   "config_flow": true,
-  "dependencies": ["http", "frontend", "websocket_api"],
+  "dependencies": ["http", "frontend", "websocket_api", "camera", "stream"],
   "documentation": "https://github.com/Pacco24626/nexus-videocitofono",
   "integration_type": "service",
   "iot_class": "local_push",
   "single_config_entry": true,
   "requirements": [],
-  "version": "0.2.5"
+  "version": "0.2.6"
 }

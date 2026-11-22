@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.2.5"
+VERSION = "0.2.6"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura
@@ -67,6 +67,22 @@ CONF_VTO_IP = "vto_ip"
 CONF_ADMIN_USER = "admin_user"
 CONF_ADMIN_PASSWORD = "admin_password"
 CONF_EXTENSION = "extension"
+# URL RTSP dello stream "intercom" del go2rtc dell'ADD-ON, come lo raggiunge HA Core
+# (NON 127.0.0.1: HA Core gira in un container separato). Configurabile; default =
+# gateway hassio (l'host visto dal Core). Da verificare sul campo.
+CONF_ADDON_RTSP = "addon_rtsp"
+DEFAULT_ADDON_RTSP = "rtsp://172.30.32.1:8554/intercom"
+
+# Entita' del device MQTT dell'add-on, per UNIQUE_ID stabile (gli entity_id NON sono
+# deducibili: vanno risolti dal registro, platform "mqtt"). Vedi
+# [[reference_ha_embed_camera_stream]] e la lezione del 22/11 sugli entity_id.
+ADDON_UNIQUE_IDS = {
+    "call_sensor": ("binary_sensor", "vimar_vdc_call"),
+    "answer": ("button", "vimar_vdc_answer"),
+    "door": ("button", "vimar_vdc_door"),
+    "hangup": ("button", "vimar_vdc_hangup"),
+    "status_sensor": ("sensor", "vimar_vdc_status"),
+}
 
 # --- notifiche azionabili (app Companion) ---
 EVENT_ACTION = "mobile_app_notification_action"
