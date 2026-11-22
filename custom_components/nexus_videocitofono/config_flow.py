@@ -51,12 +51,14 @@ from .const import (
     CONF_MESSAGE,
     CONF_NOTIFY_TARGETS,
     CONF_RING_HOLD_SEC,
+    CONF_TALK_TIMEOUT,
     CONF_TITLE,
     CONF_USE_ADDON,
     CONF_VTO_IP,
     DEFAULT_BRAND,
     DEFAULT_MESSAGE,
     DEFAULT_RING_HOLD_SEC,
+    DEFAULT_TALK_TIMEOUT,
     DEFAULT_TITLE,
     DOMAIN,
 )
@@ -322,6 +324,20 @@ class NexusVideocitofonoOptionsFlow(OptionsFlow):
                         min=0,
                         max=300,
                         step=5,
+                        unit_of_measurement="s",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Optional(
+                    CONF_TALK_TIMEOUT,
+                    description={
+                        "suggested_value": cur.get(CONF_TALK_TIMEOUT, DEFAULT_TALK_TIMEOUT)
+                    },
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0,
+                        max=3600,
+                        step=10,
                         unit_of_measurement="s",
                         mode=selector.NumberSelectorMode.BOX,
                     )

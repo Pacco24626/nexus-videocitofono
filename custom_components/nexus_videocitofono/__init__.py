@@ -31,10 +31,12 @@ from .const import (
     CONF_DOOR_BUTTON,
     CONF_HANGUP_BUTTON,
     CONF_RING_HOLD_SEC,
+    CONF_TALK_TIMEOUT,
     CONF_TITLE,
     CONF_USE_ADDON,
     DEFAULT_CALL_SENSOR,
     DEFAULT_RING_HOLD_SEC,
+    DEFAULT_TALK_TIMEOUT,
     DEFAULT_TITLE,
     DOMAIN,
     GUARDIAN_URL,
@@ -97,8 +99,62 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def _async_sync_addon_timeout(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Allinea `talk_timeout_s` nelle opzioni dell'add-on (via Supervisor) alla scelta dell'utente.
+
+    BEST-EFFORT: qualsiasi errore viene solo loggato, non deve mai rompere il setup. Scrive e
+    riavvia l'add-on SOLO se: use_addon ON, siamo su HAOS/Supervisor, l'add-on esiste, ha gia' il
+    campo talk_timeout_s nello schema (>=0.3.4) e il valore e' DIVERSO (cosi' al default non si
+    tocca nulla e non si riavvia l'add-on inutilmente).
+    """
+    opt = dict(entry.options)
+    if not opt.get(CONF_USE_ADDON):
+        return
+    timeout = int(opt.get(CONF_TALK_TIMEOUT, DEFAULT_TALK_TIMEOUT))
+    try:
+        from homeassistant.components.hassio import get_supervisor_info, is_hassio
+
+        if not is_hassio(hass):
+            return
+        info = get_supervisor_info(hass) or {}
+        slug = next(
+            (
+                a["slug"]
+                for a in info.get("addons", [])
+                if str(a.get("slug", "")).endswith("_vimar_vdc_intercom")
+            ),
+            None,
+        )
+        if not slug:
+            return
+        try:
+            from homeassistant.components.hassio import AddonManager
+        except ImportError:
+            from homeassistant.components.hassio.addon_manager import AddonManager
+
+        mgr = AddonManager(hass, _LOGGER, "Nexus Videocitofono (ponte)", slug)
+        addon = await mgr.async_get_addon_info()
+        options = dict(addon.options or {})
+        if "talk_timeout_s" not in options:
+            return  # add-on troppo vecchio: non infilare una chiave fuori schema
+        if options.get("talk_timeout_s") == timeout:
+            return  # gia' allineato
+        options["talk_timeout_s"] = timeout
+        await mgr.async_set_addon_options(options)
+        if getattr(addon, "state", None) == "started":
+            await mgr.async_restart_addon()
+        _LOGGER.info(
+            "Nexus Videocitofono: talk_timeout_s=%s scritto nell'add-on %s", timeout, slug
+        )
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning(
+            "Nexus Videocitofono: sync talk_timeout_s con l'add-on non riuscita: %s", err
+        )
+
+
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Ricarica quando l'utente cambia le opzioni dal pannello Configura."""
+    await _async_sync_addon_timeout(hass, entry)  # propaga la durata max all'add-on (best-effort)
     await hass.config_entries.async_reload(entry.entry_id)
 
 
@@ -149,6 +205,7 @@ def _async_register_ws(hass: HomeAssistant) -> None:
             "status_sensor": None,  # sensore "Stato" dell'add-on (tiene aperto in conversazione)
             "reg_sensor": None,  # sensore "Registrazione SIP" (chip di stato della card)
             "autostart": None,  # button "Autoaccensione" (chiama la targa senza suonata); None se la marca non la supporta
+            "talk_timeout_s": opt.get(CONF_TALK_TIMEOUT, DEFAULT_TALK_TIMEOUT),  # durata max conversazione: la plancia ci fa il conto alla rovescia
         }
         # Con l'add-on ON: le sue entita' (risolte per unique_id) VINCONO sui CONF_*
         # manuali, e la camera e' lo stream "intercom" dell'integrazione.

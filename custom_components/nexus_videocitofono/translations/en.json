@@ -57,7 +57,8 @@
           "dashboard_path": "Dashboard to open on tap",
           "title": "Notification title",
           "message": "Notification text",
-          "ring_hold_sec": "Keep the panel open for (seconds)"
+          "ring_hold_sec": "Keep the panel open for (seconds)",
+          "talk_timeout_s": "Maximum call duration (seconds)"
         },
         "data_description": {
           "ring_hold_sec": "The automatic panel stays open at least this many seconds after a ring. Useful for intercoms that signal the call with a short pulse (e.g. Dahua ~5 s), which would otherwise vanish immediately. 0 = close as soon as the ring ends. Default 60.",
@@ -65,7 +66,8 @@
           "answer_button": "Leave empty if your intercom has no two-way answer.",
           "hangup_button": "Leave empty if your intercom has no hang-up.",
           "camera": "The intercom camera: the video in the notification and the automatic panel.",
-          "dashboard_path": "Path of the intercom dashboard. Empty = open nothing on tap."
+          "dashboard_path": "Path of the intercom dashboard. Empty = open nothing on tap.",
+          "talk_timeout_s": "With the add-on, the call ends by itself after this many seconds (automatic hang-up), and the panel shows a countdown. 0 = no limit. Default 120. No effect without the add-on."
         }
       }
     },

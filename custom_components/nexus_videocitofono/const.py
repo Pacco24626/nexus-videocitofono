@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura
@@ -26,6 +26,11 @@ CONF_MESSAGE = "message"
 # tengono il sensore ON solo pochi secondi per suonata): senza questo la plancia
 # si richiuderebbe da sola subito. 0 = chiudi appena il sensore torna OFF.
 CONF_RING_HOLD_SEC = "ring_hold_sec"
+# Durata massima di una conversazione (secondi). 0 = nessun limite. Viene scritta nelle
+# opzioni dell'add-on (chiave talk_timeout_s) via Supervisor: e' l'add-on a riagganciare da
+# solo alla scadenza. La plancia mostra un conto alla rovescia da questo valore, da "in
+# conversazione". Rilevante solo con l'add-on (use_addon ON); altrimenti ignorata.
+CONF_TALK_TIMEOUT = "talk_timeout_s"
 
 # --- default (Vimar By-me, ma riconfigurabili) ---
 DEFAULT_CALL_SENSOR = "binary_sensor.vimar_videocitofonia_chiamata_in_arrivo"
@@ -36,6 +41,7 @@ DEFAULT_DASHBOARD = "/videocitofono-vimar/citofono"
 DEFAULT_TITLE = "\U0001F514 Videocitofono"
 DEFAULT_MESSAGE = "Qualcuno sta suonando al videocitofono."
 DEFAULT_RING_HOLD_SEC = 60
+DEFAULT_TALK_TIMEOUT = 120  # pari al default dell'add-on: nessuna scrittura se non si cambia
 
 # --- marche supportate (guidano SOLO i default del pannello Configura; l'integrazione
 # resta brand-agnostica e lavora su entita' HA standard qualunque sia la marca) ---

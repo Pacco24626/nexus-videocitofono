@@ -57,7 +57,8 @@
           "dashboard_path": "Plancia da aprire al tocco",
           "title": "Titolo della notifica",
           "message": "Testo della notifica",
-          "ring_hold_sec": "Tieni aperta la plancia per (secondi)"
+          "ring_hold_sec": "Tieni aperta la plancia per (secondi)",
+          "talk_timeout_s": "Durata massima conversazione (secondi)"
         },
         "data_description": {
           "ring_hold_sec": "La plancia automatica resta aperta almeno questi secondi dopo la suonata. Utile per i citofoni che segnalano la chiamata con un impulso breve (es. Dahua ~5 s): senza, sparirebbe subito. 0 = chiudi appena finisce la suonata. Predefinito 60.",
@@ -65,7 +66,8 @@
           "answer_button": "Lascia vuoto se il tuo citofono non ha il «rispondi» a due vie.",
           "hangup_button": "Lascia vuoto se il tuo citofono non ha il «riaggancia».",
           "camera": "La telecamera del citofono: il video nella notifica e nella plancia automatica.",
-          "dashboard_path": "Percorso della plancia videocitofono. Vuoto = non apre nulla al tocco."
+          "dashboard_path": "Percorso della plancia videocitofono. Vuoto = non apre nulla al tocco.",
+          "talk_timeout_s": "Con l'add-on, la conversazione si chiude da sola dopo questi secondi (riaggancio automatico), e la plancia mostra un conto alla rovescia. 0 = nessun limite. Predefinito 120. Senza add-on non ha effetto."
         }
       }
     },
