@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.3.4"
+VERSION = "0.3.5"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura
@@ -98,6 +98,7 @@ ADDON_UNIQUE_IDS = {
     "status_sensor": ("sensor", "vimar_vdc_status"),  # stato conversazione (guardiano)
     "reg_sensor": ("sensor", "vimar_vdc_reg"),  # registrazione SIP (chip di stato della card)
     "autostart": ("button", "vimar_vdc_monitor"),  # Autoaccensione (chiama la targa senza suonata); solo marche che la supportano
+    "floor_ring": ("event", "vimar_vdc_floor_ring"),  # EVENT "Fuoriporta" (campanello alla porta di casa, Vimar): momentaneo, niente video/audio/apriporta
 }
 
 # --- notifiche azionabili (app Companion) ---
@@ -106,6 +107,13 @@ ACTION_ANSWER = "VIMAR_VDC_ANSWER"
 ACTION_DOOR = "VIMAR_VDC_DOOR"
 ACTION_HANGUP = "VIMAR_VDC_HANGUP"
 NOTIFY_TAG = "vimar_vdc_call"
+# Fuoriporta (campanello alla porta di casa, solo col plugin Vimar): notifica DISTINTA dalla
+# targa (tag diverso, NESSUNA azione: non ha video/audio/apriporta propri), evento momentaneo.
+# Il core NON fa debounce (un FP = un evento) -> il debounce lo facciamo qui nella notifica.
+FLOOR_NOTIFY_TAG = "vimar_vdc_floor"
+DEFAULT_FLOOR_TITLE = "\U0001F6AA Fuoriporta"
+DEFAULT_FLOOR_MESSAGE = "Qualcuno sta suonando alla porta di casa."
+FLOOR_DEBOUNCE_SEC = 12
 
 # --- guardiano (plancia automatica sui dispositivi scelti) ---
 GUARDIAN_URL = "/nexus_videocitofono/guardian.js"

@@ -206,12 +206,13 @@ def _async_register_ws(hass: HomeAssistant) -> None:
             "reg_sensor": None,  # sensore "Registrazione SIP" (chip di stato della card)
             "autostart": None,  # button "Autoaccensione" (chiama la targa senza suonata); None se la marca non la supporta
             "talk_timeout_s": opt.get(CONF_TALK_TIMEOUT, DEFAULT_TALK_TIMEOUT),  # durata max conversazione: la plancia ci fa il conto alla rovescia
+            "floor_ring": None,  # EVENT "Fuoriporta" (Vimar): la card ne mostra un'indicazione; None se la marca non ce l'ha
         }
         # Con l'add-on ON: le sue entita' (risolte per unique_id) VINCONO sui CONF_*
         # manuali, e la camera e' lo stream "intercom" dell'integrazione.
         if use_addon:
             addon = resolve_addon(hass)
-            for key in ("call_sensor", "answer", "door", "hangup", "status_sensor", "reg_sensor", "autostart"):
+            for key in ("call_sensor", "answer", "door", "hangup", "status_sensor", "reg_sensor", "autostart", "floor_ring"):
                 if addon.get(key):
                     result[key] = addon[key]
             if entry:

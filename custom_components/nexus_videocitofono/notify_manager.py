@@ -11,14 +11,15 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.util import slugify
+from homeassistant.util import dt as dt_util, slugify
 
 from .const import (
     ACTION_ANSWER,
     ACTION_DOOR,
     ACTION_HANGUP,
+    ADDON_UNIQUE_IDS,
     CONF_ANSWER_BUTTON,
     CONF_CALL_SENSOR,
     CONF_DASHBOARD_PATH,
@@ -28,14 +29,19 @@ from .const import (
     CONF_MESSAGE,
     CONF_NOTIFY_TARGETS,
     CONF_TITLE,
+    CONF_USE_ADDON,
     DEFAULT_ANSWER_BUTTON,
     DEFAULT_CALL_SENSOR,
     DEFAULT_DASHBOARD,
     DEFAULT_DOOR_BUTTON,
+    DEFAULT_FLOOR_MESSAGE,
+    DEFAULT_FLOOR_TITLE,
     DEFAULT_HANGUP_BUTTON,
     DEFAULT_MESSAGE,
     DEFAULT_TITLE,
     EVENT_ACTION,
+    FLOOR_DEBOUNCE_SEC,
+    FLOOR_NOTIFY_TAG,
     NOTIFY_TAG,
 )
 
@@ -64,6 +70,7 @@ class NotifyManager:
         self.hass = hass
         self.entry = entry
         self._unsub: list = []
+        self._last_floor: float | None = None  # ultimo fuoriporta (monotonic), per il debounce
 
     def _opt(self, key: str, default):
         """Legge un'opzione (options prevale su data, poi default)."""
@@ -77,6 +84,16 @@ class NotifyManager:
             async_track_state_change_event(self.hass, [call_sensor], self._on_call_state)
         )
         self._unsub.append(self.hass.bus.async_listen(EVENT_ACTION, self._on_action))
+        # Fuoriporta (campanello alla porta di casa, solo col ponte/plugin Vimar): EVENT
+        # risolto per unique_id. Assente (altre marche / add-on senza plugin) -> nessun ascolto.
+        if self._opt(CONF_USE_ADDON, False):
+            dom, uid = ADDON_UNIQUE_IDS.get("floor_ring", (None, None))
+            floor = er.async_get(self.hass).async_get_entity_id(dom, "mqtt", uid) if uid else None
+            if floor:
+                self._unsub.append(
+                    async_track_state_change_event(self.hass, [floor], self._on_floor_ring)
+                )
+                _LOGGER.debug("Nexus Videocitofono: fuoriporta in ascolto su %s", floor)
         _LOGGER.debug("Nexus Videocitofono in ascolto su %s", call_sensor)
 
     @callback
@@ -148,6 +165,54 @@ class NotifyManager:
 
     async def _clear(self) -> None:
         payload = {"message": "clear_notification", "data": {"tag": NOTIFY_TAG}}
+        for svc in self._opt(CONF_NOTIFY_TARGETS, []):
+            await self._call_notify(svc, payload)
+
+    async def _on_floor_ring(self, event: Event) -> None:
+        """EVENT "Fuoriporta": notifica DISTINTA dalla targa, col debounce (il core non lo fa)."""
+        new = event.data.get("new_state")
+        old = event.data.get("old_state")
+        if new is None or new.state in ("unknown", "unavailable"):
+            return
+        if not self._opt(CONF_ENABLE_NOTIFY, True):
+            return
+        # Un EVENT entity "spara" cambiando stato (timestamp del fire): solo un cambio verso un
+        # timestamp nuovo con event_type "ring".
+        if old is not None and old.state == new.state:
+            return
+        if (new.attributes.get("event_type") or "ring") != "ring":
+            return
+        # Niente falsi positivi da restore/avvio: l'EVENT conserva l'ultimo timestamp, che al
+        # riavvio puo' rifiltrare come "cambio" -> notifica solo se il fire e' RECENTE.
+        ts = dt_util.parse_datetime(new.state)
+        if ts is None or (dt_util.utcnow() - ts).total_seconds() > 30:
+            return
+        # DEBOUNCE: un altro ring entro FLOOR_DEBOUNCE_SEC (rimbalzi/doppi invii) si ignora.
+        now = self.hass.loop.time()
+        if self._last_floor is not None and (now - self._last_floor) < FLOOR_DEBOUNCE_SEC:
+            return
+        self._last_floor = now
+        await self._send_floor(str(new.attributes.get("msg") or "").strip())
+
+    async def _send_floor(self, msg: str) -> None:
+        dash = self._opt(CONF_DASHBOARD_PATH, DEFAULT_DASHBOARD)
+        data: dict = {
+            "tag": FLOOR_NOTIFY_TAG,  # tag DIVERSO dalla targa: non la sostituisce ne' la cancella
+            "channel": "Fuoriporta",
+            "importance": "high",
+            "priority": "high",
+            "ttl": 0,
+            "notification_icon": "mdi:doorbell",
+            "push": {"interruption-level": "time-sensitive"},
+        }
+        if dash:
+            data["url"] = dash
+            data["clickAction"] = dash
+        payload = {
+            "title": DEFAULT_FLOOR_TITLE + (f": {msg}" if msg else ""),
+            "message": DEFAULT_FLOOR_MESSAGE,
+            "data": data,  # NESSUNA azione: il fuoriporta non ha rispondi/apriporta propri
+        }
         for svc in self._opt(CONF_NOTIFY_TARGETS, []):
             await self._call_notify(svc, payload)
 
