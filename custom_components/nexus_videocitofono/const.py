@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.3.5"
+VERSION = "0.3.6"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura

@@ -10,6 +10,12 @@ link go2rtc-HA -> go2rtc-add-on e' locale. Vedi const.py per il perche' ws e non
 from __future__ import annotations
 
 from homeassistant.components.camera import Camera, CameraEntityFeature
+
+try:  # CameraEntityCapabilities esiste solo da HA 2026.11 (import protetto)
+    from homeassistant.components.camera import CameraEntityCapabilities
+except ImportError:  # core piu' vecchi: resta None -> nessun pulsante "parla" nativo
+    CameraEntityCapabilities = None
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -26,7 +32,14 @@ async def async_setup_entry(
 
 
 class VideocitofonoCamera(Camera):
-    """Camera che punta allo stream RTSP del go2rtc dell'add-on."""
+    """Camera che ripubblica lo stream "intercom" (go2rtc webrtc:ws) dell'add-on.
+
+    Dichiara la capability two_way_audio (HA >= 2026.11): con la feature Labs
+    "two_way_audio" accesa dall'utente, HA mostra il pulsante "Inizia a parlare" NATIVO
+    nel more-info (usa il backchannel della sorgente webrtc:ws). Oggi il nativo usa
+    getUserMedia -> solo https, come la plancia; il vantaggio vero sara' il microfono
+    nativo dell'app su http (epic home-assistant/epics#102, in sviluppo).
+    """
 
     _attr_has_entity_name = True
     _attr_name = "Videocitofono"
@@ -37,6 +50,14 @@ class VideocitofonoCamera(Camera):
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_camera"
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+        # Capability two_way_audio (HA >= 2026.11): fa comparire il pulsante "parla"
+        # nativo nel more-info (richiede la feature Labs accesa dall'utente + WEB_RTC, che
+        # il provider go2rtc da'). L'integrazione dichiara SOLO la capability: la
+        # negoziazione del mic la fa go2rtc sul backchannel della sorgente webrtc:ws.
+        if CameraEntityCapabilities is not None:
+            self._attr_camera_entity_capabilities = CameraEntityCapabilities(
+                two_way_audio=True
+            )
 
     def _src(self) -> str:
         return self._entry.options.get(CONF_ADDON_SRC) or DEFAULT_ADDON_SRC
