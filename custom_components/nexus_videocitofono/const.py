@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.3.3"
+VERSION = "0.3.4"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura
@@ -73,14 +73,19 @@ CONF_VTO_IP = "vto_ip"
 CONF_ADMIN_USER = "admin_user"
 CONF_ADMIN_PASSWORD = "admin_password"
 CONF_EXTENSION = "extension"
-# URL RTSP dello stream "intercom" del go2rtc dell'ADD-ON, come lo raggiunge HA Core
-# (NON 127.0.0.1: HA Core gira in un container separato). Configurabile; default =
-# gateway hassio (l'host visto dal Core). Da verificare sul campo.
-CONF_ADDON_RTSP = "addon_rtsp"
-# Su HAOS il container Core gira con la rete dell'host, quindi 127.0.0.1 E' l'host e
-# raggiunge il go2rtc dell'add-on (host_network, bind :8554 su tutte le interfacce).
-# 172.30.32.1 (gateway hassio) e' il ripiego; l'IP LAN e' install-specifico, non qui.
-DEFAULT_ADDON_RTSP = "rtsp://127.0.0.1:8554/intercom"
+# Sorgente go2rtc dello stream "intercom" dell'ADD-ON, passata al go2rtc INTERNO di HA
+# (che fa da provider WebRTC alla camera). DEVE essere il formato go2rtc su WebSocket
+# (webrtc:ws://.../api/ws?src=...), NON la forma WHEP (webrtc:http://.../api/webrtc?...):
+# solo il formato ws, nell'offerta del client go2rtc, aggiunge una traccia audio SENDONLY
+# verso l'add-on, cioe' il canale che porta il MICROFONO del browser al backchannel
+# dell'add-on (-> relay SIP -> targa). Con l'RTSP (vecchio default rtsp://...:8554/intercom)
+# il server RTSP del go2rtc add-on NON offre backchannel -> audio a due vie impossibile.
+# HA passa questa stringa a go2rtc com'e', filtrata su GET /api/schemes: 'webrtc' deve
+# essere tra gli schemi del go2rtc di HA (da validare al deploy). Su HAOS il Core gira con
+# la rete dell'host, quindi 127.0.0.1:1984 raggiunge l'API del go2rtc dell'add-on
+# (host_network). Override possibile via opzione addon_src (non esposta nel config flow).
+CONF_ADDON_SRC = "addon_src"
+DEFAULT_ADDON_SRC = "webrtc:ws://127.0.0.1:1984/api/ws?src=intercom"
 
 # Entita' del device MQTT dell'add-on, per UNIQUE_ID stabile (gli entity_id NON sono
 # deducibili: vanno risolti dal registro, platform "mqtt"). Vedi

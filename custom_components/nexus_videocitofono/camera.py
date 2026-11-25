@@ -1,9 +1,11 @@
 """Telecamera del videocitofono: ripubblica lo stream "intercom" dell'add-on.
 
-Caricata SOLO quando use_addon e' ON. E' una camera con stream_source RTSP: dal
-2024.11 il go2rtc integrato di HA le fa da provider WebRTC in automatico, quindi il
-player (RTCPeerConnection + camera/webrtc/offer) funziona senza negoziazione custom.
-L'audio bidirezionale (backchannel) e' un problema separato (2c).
+Caricata SOLO quando use_addon e' ON. stream_source e' una sorgente go2rtc
+`webrtc:ws://.../api/ws?src=intercom` (NON RTSP): dal 2024.11 il go2rtc integrato di HA
+le fa da provider WebRTC, e il formato ws porta anche il MICROFONO del browser verso
+l'add-on (traccia audio sendonly -> backchannel SIP -> targa), cosa che l'RTSP non puo'.
+Il browser resta su HA (camera/webrtc/offer), quindi funziona anche da remoto; solo il
+link go2rtc-HA -> go2rtc-add-on e' locale. Vedi const.py per il perche' ws e non WHEP.
 """
 from __future__ import annotations
 
@@ -13,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_ADDON_RTSP, DEFAULT_ADDON_RTSP, DOMAIN
+from .const import CONF_ADDON_SRC, DEFAULT_ADDON_SRC, DOMAIN
 
 
 async def async_setup_entry(
@@ -36,17 +38,22 @@ class VideocitofonoCamera(Camera):
         self._attr_unique_id = f"{entry.entry_id}_camera"
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
 
-    def _rtsp(self) -> str:
-        return self._entry.options.get(CONF_ADDON_RTSP) or DEFAULT_ADDON_RTSP
+    def _src(self) -> str:
+        return self._entry.options.get(CONF_ADDON_SRC) or DEFAULT_ADDON_SRC
 
     async def stream_source(self) -> str | None:
-        """URL passato al provider go2rtc di HA (che fa il WebRTC).
+        """Sorgente passata al provider go2rtc di HA (che fa il WebRTC).
 
+        E' una sorgente go2rtc `webrtc:ws://...` (due vie), non un RTSP: vedi const.py.
         ATTENZIONE: il metodo si chiama `stream_source` (coroutine SENZA il prefisso
         `async_`): con `async_stream_source` HA usa quello della base -> None -> la
         camera risulta "HLS only / does not support streaming".
+        NOTA HLS: col provider go2rtc la camera annuncia sempre anche HLS, e ffmpeg non
+        apre `webrtc:`; ma qui non si usano HLS/registrazione/stills (async_camera_image
+        torna None, use_stream_for_stills resta False) -> create_stream non scatta,
+        nessuna rottura pratica.
         """
-        return self._rtsp()
+        return self._src()
 
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
