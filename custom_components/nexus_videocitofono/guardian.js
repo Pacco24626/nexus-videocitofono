@@ -198,7 +198,7 @@
     ".cmd:active{transform:scale(.96)}";
 
   var cfg = null, host = null, sr = null, dismissed = false, shownAt = 0, rtc = null, audioOn = false, micActive = false, micMuted = false;
-  var wd = null, tries = 0, guardConnecting = false, lastPreview = true, rang = false;
+  var guardConnecting = false, lastPreview = true, rang = false;
 
   // Origine della chiamata attiva, dall'attributo stabile `origin` del sensore Stato
   // ("incoming" = squillo entrante, "monitor" = autoaccensione). null se l'add-on non lo espone
@@ -230,24 +230,6 @@
     var v = liveVid();
     if (el) el.className = "conn" + ((guardConnecting && v && v.videoWidth === 0) ? " on" : "");
   }
-  function clearWatchdog() { if (wd) { try { clearTimeout(wd); } catch (e) {} wd = null; } }
-  // Senza anteprima il video arriva solo a chi si collega a video GIA' partito: se dopo
-  // qualche secondo non ci sono frame, richiudo e riapro (rinegozio), per qualche tentativo.
-  function armWatchdog(hass) {
-    clearWatchdog();
-    wd = setTimeout(function () {
-      wd = null;
-      var v = liveVid();
-      if (!rtc || !v || !host) return;
-      if (v.videoWidth > 0) { guardConnecting = false; renderConnecting(); return; }
-      if (tries >= 3) { guardConnecting = false; renderConnecting(); return; } // basta: resta l'audio
-      tries++;
-      try { rtc.stop(); } catch (e) {}
-      rtc = null;
-      if (cfg && cfg.camera) rtc = startWebRTC(hass, cfg.camera, v, null);
-      armWatchdog(hass);
-    }, 5000);
-  }
   function startPlayer(hass) {
     if (rtc) return;
     var v = liveVid();
@@ -255,10 +237,8 @@
     guardConnecting = !previewAvail(hass);
     renderConnecting();
     rtc = startWebRTC(hass, cfg.camera, v, null);
-    if (!previewAvail(hass)) { tries = 0; armWatchdog(hass); }
   }
   function stopPlayer() {
-    clearWatchdog();
     if (rtc) { try { rtc.stop(); } catch (e) {} rtc = null; }
     guardConnecting = false; renderConnecting();
   }
@@ -402,7 +382,8 @@
     if (img0) img0.onerror = function () { img0.style.display = "none"; };
     // Video live via WebRTC. Rivela il video a frame arrivati; con anteprima al "playing".
     // Su marche senza anteprima (Vimar) il player si apre solo "in conversazione" (syncPlayer,
-    // chiamato qui e dal tick); se arriva solo audio richiude e riapre (vedi armWatchdog).
+    // chiamato qui e dal tick). Il video arriva subito grazie alla traccia calda dell'add-on
+    // (>=0.3.14): niente watchdog di riapertura (lasciava upstream webrtc:ws appesi su HA).
     var vid = c.camera && $("live");
     if (vid) {
       var reveal = function () {
@@ -424,10 +405,9 @@
   }
 
   function close() {
-    clearWatchdog();
     if (rtc) { try { rtc.stop(); } catch (e) {} rtc = null; }
     if (host) { host.remove(); host = null; sr = null; }
-    audioOn = false; guardConnecting = false; tries = 0; micActive = false; micMuted = false;
+    audioOn = false; guardConnecting = false; micActive = false; micMuted = false;
   }
   function userDismiss() { dismissed = true; close(); } // chiusura utente: non riaprire finche' squilla
 
