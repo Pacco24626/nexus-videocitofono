@@ -113,10 +113,15 @@ async def _async_sync_addon_timeout(hass: HomeAssistant, entry: ConfigEntry) -> 
         return
     timeout = int(opt.get(CONF_TALK_TIMEOUT, DEFAULT_TALK_TIMEOUT))
     try:
-        from homeassistant.components.hassio import get_supervisor_info, is_hassio
-
-        if not is_hassio(hass):
+        # Supervisor presente? Gate robusto che non dipende da import che cambiano di
+        # versione: in HA 2026.11 `is_hassio` e' sparito da components.hassio (ora in
+        # helpers.hassio) -> uso hass.config.components, che vale su tutte le versioni.
+        if "hassio" not in hass.config.components:
             return
+        try:  # get_supervisor_info: regge sia la nuova (helpers) che la vecchia collocazione
+            from homeassistant.helpers.hassio import get_supervisor_info
+        except ImportError:
+            from homeassistant.components.hassio import get_supervisor_info
         info = get_supervisor_info(hass) or {}
         slug = next(
             (
@@ -129,9 +134,12 @@ async def _async_sync_addon_timeout(hass: HomeAssistant, entry: ConfigEntry) -> 
         if not slug:
             return
         try:
-            from homeassistant.components.hassio import AddonManager
+            from homeassistant.helpers.hassio.addon_manager import AddonManager
         except ImportError:
-            from homeassistant.components.hassio.addon_manager import AddonManager
+            try:
+                from homeassistant.components.hassio import AddonManager
+            except ImportError:
+                from homeassistant.components.hassio.addon_manager import AddonManager
 
         mgr = AddonManager(hass, _LOGGER, "Nexus Videocitofono (ponte)", slug)
         addon = await mgr.async_get_addon_info()
