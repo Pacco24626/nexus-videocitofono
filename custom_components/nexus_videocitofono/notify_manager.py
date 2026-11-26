@@ -43,6 +43,7 @@ from .const import (
     FLOOR_DEBOUNCE_SEC,
     FLOOR_NOTIFY_TAG,
     NOTIFY_TAG,
+    uses_addon,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ class NotifyManager:
         self._unsub.append(self.hass.bus.async_listen(EVENT_ACTION, self._on_action))
         # Fuoriporta (campanello alla porta di casa, solo col ponte/plugin Vimar): EVENT
         # risolto per unique_id. Assente (altre marche / add-on senza plugin) -> nessun ascolto.
-        if self._opt(CONF_USE_ADDON, False):
+        if uses_addon({**self.entry.data, **self.entry.options}):
             dom, uid = ADDON_UNIQUE_IDS.get("floor_ring", (None, None))
             floor = er.async_get(self.hass).async_get_entity_id(dom, "mqtt", uid) if uid else None
             if floor:

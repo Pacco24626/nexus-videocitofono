@@ -42,6 +42,7 @@ from .const import (
     GUARDIAN_URL,
     VERSION,
     WS_CONFIG,
+    uses_addon,
 )
 from .notify_manager import NotifyManager
 
@@ -72,7 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     manager = NotifyManager(hass, entry)
     await manager.async_start()
     # Con l'add-on (use_addon ON) esponiamo anche la camera "intercom".
-    platforms = [Platform.CAMERA] if entry.options.get(CONF_USE_ADDON) else []
+    platforms = [Platform.CAMERA] if uses_addon(entry.options) else []
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "manager": manager,
         "platforms": platforms,  # salvato: l'unload deve usare lo STESSO set
@@ -108,7 +109,7 @@ async def _async_sync_addon_timeout(hass: HomeAssistant, entry: ConfigEntry) -> 
     tocca nulla e non si riavvia l'add-on inutilmente).
     """
     opt = dict(entry.options)
-    if not opt.get(CONF_USE_ADDON):
+    if not uses_addon(opt):
         return
     timeout = int(opt.get(CONF_TALK_TIMEOUT, DEFAULT_TALK_TIMEOUT))
     try:
@@ -191,7 +192,7 @@ def _async_register_ws(hass: HomeAssistant) -> None:
         hold = opt.get(CONF_RING_HOLD_SEC)
         if hold is None:
             hold = DEFAULT_RING_HOLD_SEC  # 0 e' valido ("chiudi subito"), quindi niente `or`
-        use_addon = bool(opt.get(CONF_USE_ADDON))
+        use_addon = uses_addon(opt)
         result = {
             "use_addon": use_addon,  # la card lo usa per decidere se adeguarsi al ponte
             "call_sensor": opt.get(CONF_CALL_SENSOR) or DEFAULT_CALL_SENSOR,

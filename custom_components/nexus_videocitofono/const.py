@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.3.6"
+VERSION = "0.3.7"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura
@@ -118,3 +118,12 @@ FLOOR_DEBOUNCE_SEC = 12
 # --- guardiano (plancia automatica sui dispositivi scelti) ---
 GUARDIAN_URL = "/nexus_videocitofono/guardian.js"
 WS_CONFIG = "nexus_videocitofono/config"
+
+
+def uses_addon(options) -> bool:
+    """use_addon EFFETTIVO. Su VIMAR l'add-on e' OBBLIGATORIO (media e controllo passano
+    tutti da li') -> implicito True; su Dahua/Altri vale il flag `use_addon` del config
+    flow. Il config flow chiede use_addon SOLO nel ramo Dahua, quindi senza questo helper
+    la camera (e il ponte) non partirebbero su Vimar.
+    """
+    return bool(options.get(CONF_USE_ADDON)) or options.get(CONF_BRAND) == BRAND_VIMAR
