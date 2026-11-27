@@ -26,6 +26,10 @@ from .const import (
     CONF_DOOR_BUTTON,
     CONF_ENABLE_NOTIFY,
     CONF_HANGUP_BUTTON,
+    CONF_IOS_CRITICAL,
+    CONF_IOS_SOUND_CALL,
+    CONF_IOS_SOUND_FLOOR,
+    CONF_IOS_VOLUME,
     CONF_MESSAGE,
     CONF_NOTIFY_TARGETS,
     CONF_TITLE,
@@ -37,6 +41,10 @@ from .const import (
     DEFAULT_FLOOR_MESSAGE,
     DEFAULT_FLOOR_TITLE,
     DEFAULT_HANGUP_BUTTON,
+    DEFAULT_IOS_CRITICAL,
+    DEFAULT_IOS_SOUND_CALL,
+    DEFAULT_IOS_SOUND_FLOOR,
+    DEFAULT_IOS_VOLUME,
     DEFAULT_MESSAGE,
     DEFAULT_TITLE,
     EVENT_ACTION,
@@ -148,12 +156,31 @@ class NotifyManager:
             "sticky": True,
             "notification_icon": "mdi:doorbell-video",
             "actions": actions,
-            "push": {"interruption-level": "time-sensitive"},
+            "push": self._push_ios(self._opt(CONF_IOS_SOUND_CALL, DEFAULT_IOS_SOUND_CALL)),
         }
         if dash:
             data["url"] = dash
             data["clickAction"] = dash
         return data
+
+    def _push_ios(self, sound: str) -> dict:
+        """Dict `push` (iOS) con suoneria + notifica critica, dalle opzioni. Android ignora
+        `push` (usa i canali di notifica), quindi non ne risente. `sound` vuoto = suono
+        standard di sistema."""
+        sound = (sound or "").strip()
+        if self._opt(CONF_IOS_CRITICAL, DEFAULT_IOS_CRITICAL):
+            try:
+                volume = float(self._opt(CONF_IOS_VOLUME, DEFAULT_IOS_VOLUME))
+            except (TypeError, ValueError):
+                volume = DEFAULT_IOS_VOLUME
+            snd: dict = {"critical": 1, "volume": max(0.0, min(1.0, volume))}
+            if sound:
+                snd["name"] = sound
+            return {"interruption-level": "critical", "sound": snd}
+        push: dict = {"interruption-level": "time-sensitive"}
+        if sound:
+            push["sound"] = sound
+        return push
 
     async def _send(self) -> None:
         payload = {
@@ -204,7 +231,7 @@ class NotifyManager:
             "priority": "high",
             "ttl": 0,
             "notification_icon": "mdi:doorbell",
-            "push": {"interruption-level": "time-sensitive"},
+            "push": self._push_ios(self._opt(CONF_IOS_SOUND_FLOOR, DEFAULT_IOS_SOUND_FLOOR)),
         }
         if dash:
             data["url"] = dash

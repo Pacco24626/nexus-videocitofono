@@ -58,7 +58,11 @@
           "title": "Titolo della notifica",
           "message": "Testo della notifica",
           "ring_hold_sec": "Tieni aperta la plancia per (secondi)",
-          "talk_timeout_s": "Durata massima conversazione (secondi)"
+          "talk_timeout_s": "Durata massima conversazione (secondi)",
+          "ios_critical": "Notifica critica su iOS (iPhone)",
+          "ios_volume": "Volume notifica critica iOS (0-1)",
+          "ios_sound_call": "Suono iOS della targa",
+          "ios_sound_floor": "Suono iOS del fuoriporta"
         },
         "data_description": {
           "ring_hold_sec": "La plancia automatica resta aperta almeno questi secondi dopo la suonata. Utile per i citofoni che segnalano la chiamata con un impulso breve (es. Dahua ~5 s): senza, sparirebbe subito. 0 = chiudi appena finisce la suonata. Predefinito 60.",
@@ -67,7 +71,11 @@
           "hangup_button": "Lascia vuoto se il tuo citofono non ha il «riaggancia».",
           "camera": "La telecamera del citofono: il video nella notifica e nella plancia automatica.",
           "dashboard_path": "Percorso della plancia videocitofono. Vuoto = non apre nulla al tocco.",
-          "talk_timeout_s": "Con l'add-on, la conversazione si chiude da sola dopo questi secondi (riaggancio automatico), e la plancia mostra un conto alla rovescia. 0 = nessun limite. Predefinito 120. Senza add-on non ha effetto."
+          "talk_timeout_s": "Con l'add-on, la conversazione si chiude da sola dopo questi secondi (riaggancio automatico), e la plancia mostra un conto alla rovescia. 0 = nessun limite. Predefinito 120. Senza add-on non ha effetto.",
+          "ios_critical": "Solo iPhone: notifica CRITICA, suona anche in silenzioso/Non disturbare. Richiede il permesso «Avvisi critici» per l'app Home Assistant su iOS. Su Android non ha effetto (si usano i canali di notifica). Predefinito acceso.",
+          "ios_volume": "Volume della notifica critica iOS, da 0 a 1. Predefinito 1.",
+          "ios_sound_call": "Solo iPhone: nome del file suono per la suonata della targa, importato nella app Companion (Impostazioni → Notifiche → Suoni). Vuoto = suono standard. Predefinito nexus_campanello.wav.",
+          "ios_sound_floor": "Solo iPhone: nome del file suono per il fuoriporta. Vuoto = suono standard. Predefinito nexus_fuoriporta.wav."
         }
       }
     },

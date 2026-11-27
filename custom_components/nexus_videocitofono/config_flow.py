@@ -48,6 +48,10 @@ from .const import (
     CONF_ENABLE_NOTIFY,
     CONF_EXTENSION,
     CONF_HANGUP_BUTTON,
+    CONF_IOS_CRITICAL,
+    CONF_IOS_SOUND_CALL,
+    CONF_IOS_SOUND_FLOOR,
+    CONF_IOS_VOLUME,
     CONF_MESSAGE,
     CONF_NOTIFY_TARGETS,
     CONF_RING_HOLD_SEC,
@@ -56,6 +60,10 @@ from .const import (
     CONF_USE_ADDON,
     CONF_VTO_IP,
     DEFAULT_BRAND,
+    DEFAULT_IOS_CRITICAL,
+    DEFAULT_IOS_SOUND_CALL,
+    DEFAULT_IOS_SOUND_FLOOR,
+    DEFAULT_IOS_VOLUME,
     DEFAULT_MESSAGE,
     DEFAULT_RING_HOLD_SEC,
     DEFAULT_TALK_TIMEOUT,
@@ -342,6 +350,36 @@ class NexusVideocitofonoOptionsFlow(OptionsFlow):
                         mode=selector.NumberSelectorMode.BOX,
                     )
                 ),
+                vol.Required(
+                    CONF_IOS_CRITICAL,
+                    default=cur.get(CONF_IOS_CRITICAL, DEFAULT_IOS_CRITICAL),
+                ): selector.BooleanSelector(),
+                vol.Optional(
+                    CONF_IOS_VOLUME,
+                    description={
+                        "suggested_value": cur.get(CONF_IOS_VOLUME, DEFAULT_IOS_VOLUME)
+                    },
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, max=1, step=0.1, mode=selector.NumberSelectorMode.SLIDER
+                    )
+                ),
+                vol.Optional(
+                    CONF_IOS_SOUND_CALL,
+                    description={
+                        "suggested_value": cur.get(
+                            CONF_IOS_SOUND_CALL, DEFAULT_IOS_SOUND_CALL
+                        )
+                    },
+                ): selector.TextSelector(),
+                vol.Optional(
+                    CONF_IOS_SOUND_FLOOR,
+                    description={
+                        "suggested_value": cur.get(
+                            CONF_IOS_SOUND_FLOOR, DEFAULT_IOS_SOUND_FLOOR
+                        )
+                    },
+                ): selector.TextSelector(),
             }
         )
         return self.async_show_form(step_id="config", data_schema=schema)

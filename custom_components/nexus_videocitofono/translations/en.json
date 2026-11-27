@@ -58,7 +58,11 @@
           "title": "Notification title",
           "message": "Notification text",
           "ring_hold_sec": "Keep the panel open for (seconds)",
-          "talk_timeout_s": "Maximum call duration (seconds)"
+          "talk_timeout_s": "Maximum call duration (seconds)",
+          "ios_critical": "Critical notification on iOS (iPhone)",
+          "ios_volume": "iOS critical notification volume (0-1)",
+          "ios_sound_call": "iOS sound for the intercom ring",
+          "ios_sound_floor": "iOS sound for the floor doorbell"
         },
         "data_description": {
           "ring_hold_sec": "The automatic panel stays open at least this many seconds after a ring. Useful for intercoms that signal the call with a short pulse (e.g. Dahua ~5 s), which would otherwise vanish immediately. 0 = close as soon as the ring ends. Default 60.",
@@ -67,7 +71,11 @@
           "hangup_button": "Leave empty if your intercom has no hang-up.",
           "camera": "The intercom camera: the video in the notification and the automatic panel.",
           "dashboard_path": "Path of the intercom dashboard. Empty = open nothing on tap.",
-          "talk_timeout_s": "With the add-on, the call ends by itself after this many seconds (automatic hang-up), and the panel shows a countdown. 0 = no limit. Default 120. No effect without the add-on."
+          "talk_timeout_s": "With the add-on, the call ends by itself after this many seconds (automatic hang-up), and the panel shows a countdown. 0 = no limit. Default 120. No effect without the add-on.",
+          "ios_critical": "iPhone only: CRITICAL notification, plays even in silent/Do Not Disturb. Requires the \"Critical Alerts\" permission for the Home Assistant app on iOS. No effect on Android (notification channels are used instead). Default on.",
+          "ios_volume": "Volume of the iOS critical notification, 0 to 1. Default 1.",
+          "ios_sound_call": "iPhone only: sound file name for the intercom ring, imported into the Companion app (Settings → Notifications → Sounds). Empty = standard sound. Default nexus_campanello.wav.",
+          "ios_sound_floor": "iPhone only: sound file name for the floor doorbell. Empty = standard sound. Default nexus_fuoriporta.wav."
         }
       }
     },

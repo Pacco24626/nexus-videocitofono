@@ -7,7 +7,7 @@ riconfigurabili dal pannello Opzioni.
 """
 
 DOMAIN = "nexus_videocitofono"
-VERSION = "0.3.9"
+VERSION = "0.3.10"
 
 # --- chiavi di configurazione (opzioni) ---
 CONF_BRAND = "brand"  # marca scelta: guida i default del pannello Configura
@@ -114,6 +114,21 @@ FLOOR_NOTIFY_TAG = "vimar_vdc_floor"
 DEFAULT_FLOOR_TITLE = "\U0001F6AA Fuoriporta"
 DEFAULT_FLOOR_MESSAGE = "Qualcuno sta suonando alla porta di casa."
 FLOOR_DEBOUNCE_SEC = 12
+
+# --- suonerie iOS (notifica critica) ---
+# Android: basta il suono per CANALE di notifica (Videocitofono/Fuoriporta), nessun codice.
+# iOS: `data.push.sound` = stringa (suono scelto) oppure {name, critical, volume} per la
+# notifica CRITICA (suona anche in silenzioso/Non disturbare; richiede il permesso "Avvisi
+# critici" per l'app HA su iOS). I file .wav vanno importati nella Companion iOS
+# (Impostazioni -> Notifiche -> Suoni). Vuoto = suono standard di sistema.
+CONF_IOS_SOUND_CALL = "ios_sound_call"
+CONF_IOS_SOUND_FLOOR = "ios_sound_floor"
+CONF_IOS_CRITICAL = "ios_critical"
+CONF_IOS_VOLUME = "ios_volume"
+DEFAULT_IOS_SOUND_CALL = "nexus_campanello.wav"
+DEFAULT_IOS_SOUND_FLOOR = "nexus_fuoriporta.wav"
+DEFAULT_IOS_CRITICAL = True
+DEFAULT_IOS_VOLUME = 1.0
 
 # --- guardiano (plancia automatica sui dispositivi scelti) ---
 GUARDIAN_URL = "/nexus_videocitofono/guardian.js"

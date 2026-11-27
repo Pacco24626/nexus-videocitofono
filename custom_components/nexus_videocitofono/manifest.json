@@ -10,5 +10,5 @@
   "iot_class": "local_push",
   "single_config_entry": true,
   "requirements": [],
-  "version": "0.3.9"
+  "version": "0.3.10"
 }
