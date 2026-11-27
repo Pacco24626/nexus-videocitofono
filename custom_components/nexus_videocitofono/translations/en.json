@@ -74,8 +74,8 @@
           "talk_timeout_s": "With the add-on, the call ends by itself after this many seconds (automatic hang-up), and the panel shows a countdown. 0 = no limit. Default 120. No effect without the add-on.",
           "ios_critical": "iPhone only: CRITICAL notification, plays even in silent/Do Not Disturb. Requires the \"Critical Alerts\" permission for the Home Assistant app on iOS. No effect on Android (notification channels are used instead). Default on.",
           "ios_volume": "Volume of the iOS critical notification, 0 to 1. Default 1.",
-          "ios_sound_call": "iPhone only: sound file name for the intercom ring, imported into the Companion app (Settings → Notifications → Sounds). Empty = standard sound. Default nexus_campanello.wav.",
-          "ios_sound_floor": "iPhone only: sound file name for the floor doorbell. Empty = standard sound. Default nexus_fuoriporta.wav."
+          "ios_sound_call": "iPhone only: sound file name for the intercom ring, imported into the Companion app (Settings → Notifications → Sounds). Type \"default\" for the system sound; if the file was not imported, iOS plays the standard one anyway. Default nexus_campanello.wav.",
+          "ios_sound_floor": "iPhone only: sound file name for the floor doorbell, imported into the Companion app. Type \"default\" for the system sound; if the file was not imported, iOS plays the standard one anyway. Default nexus_fuoriporta.wav."
         }
       }
     },

@@ -165,22 +165,24 @@ class NotifyManager:
 
     def _push_ios(self, sound: str) -> dict:
         """Dict `push` (iOS) con suoneria + notifica critica, dalle opzioni. Android ignora
-        `push` (usa i canali di notifica), quindi non ne risente. `sound` vuoto = suono
-        standard di sistema."""
-        sound = (sound or "").strip()
+        `push` (usa i canali di notifica), quindi non ne risente. Il valore `default` (o un
+        campo vuoto) = suono standard di sistema; un altro nome = quel file importato nella
+        app Companion iOS (se non importato, iOS usa comunque lo standard)."""
+        # Mai stringa vuota: con la notifica critica `name` DEVE esserci, altrimenti rischia di
+        # restare MUTA (la doc Companion per gli avvisi critici usa sempre `name`, default
+        # "default"). Il campo Optional, se svuotato, torna al .wav di default: per il "suono di
+        # sistema" l'utente scrive `default`, non lascia vuoto.
+        sound = (sound or "").strip() or "default"
         if self._opt(CONF_IOS_CRITICAL, DEFAULT_IOS_CRITICAL):
             try:
                 volume = float(self._opt(CONF_IOS_VOLUME, DEFAULT_IOS_VOLUME))
             except (TypeError, ValueError):
                 volume = DEFAULT_IOS_VOLUME
-            snd: dict = {"critical": 1, "volume": max(0.0, min(1.0, volume))}
-            if sound:
-                snd["name"] = sound
-            return {"interruption-level": "critical", "sound": snd}
-        push: dict = {"interruption-level": "time-sensitive"}
-        if sound:
-            push["sound"] = sound
-        return push
+            return {
+                "interruption-level": "critical",
+                "sound": {"name": sound, "critical": 1, "volume": max(0.0, min(1.0, volume))},
+            }
+        return {"interruption-level": "time-sensitive", "sound": sound}
 
     async def _send(self) -> None:
         payload = {

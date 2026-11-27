@@ -74,8 +74,8 @@
           "talk_timeout_s": "Con l'add-on, la conversazione si chiude da sola dopo questi secondi (riaggancio automatico), e la plancia mostra un conto alla rovescia. 0 = nessun limite. Predefinito 120. Senza add-on non ha effetto.",
           "ios_critical": "Solo iPhone: notifica CRITICA, suona anche in silenzioso/Non disturbare. Richiede il permesso «Avvisi critici» per l'app Home Assistant su iOS. Su Android non ha effetto (si usano i canali di notifica). Predefinito acceso.",
           "ios_volume": "Volume della notifica critica iOS, da 0 a 1. Predefinito 1.",
-          "ios_sound_call": "Solo iPhone: nome del file suono per la suonata della targa, importato nella app Companion (Impostazioni → Notifiche → Suoni). Vuoto = suono standard. Predefinito nexus_campanello.wav.",
-          "ios_sound_floor": "Solo iPhone: nome del file suono per il fuoriporta. Vuoto = suono standard. Predefinito nexus_fuoriporta.wav."
+          "ios_sound_call": "Solo iPhone: nome del file suono per la suonata della targa, importato nella app Companion (Impostazioni → Notifiche → Suoni). Scrivi «default» per il suono di sistema; se il file non e' stato importato, iOS usa comunque quello standard. Predefinito nexus_campanello.wav.",
+          "ios_sound_floor": "Solo iPhone: nome del file suono per il fuoriporta, importato nella app Companion. Scrivi «default» per il suono di sistema; se il file non e' stato importato, iOS usa comunque quello standard. Predefinito nexus_fuoriporta.wav."
         }
       }
     },
